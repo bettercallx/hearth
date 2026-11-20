@@ -58,6 +58,16 @@ test('sample journal surfaces the lunch → afternoon energy pattern with eviden
   }
 
   await page.goto('/insights')
+  // Month calendar: sample days are colored and open a day summary on tap.
+  // (The sample ends yesterday, so step back a month if today is the 1st.)
+  const calendar = page.getByTestId('month-calendar')
+  await expect(calendar).toBeVisible({ timeout: 20_000 })
+  const filled = calendar.locator('button[data-date]:not([disabled])')
+  if ((await filled.count()) === 0) await calendar.getByRole('button', { name: 'Previous month' }).click()
+  await expect(filled.first()).toBeVisible()
+  await filled.last().click()
+  await expect(page.getByTestId('day-detail')).toBeVisible()
+
   const card = page.locator('[data-pattern-id="lunch:energyAfternoon"]')
   await expect(card).toBeVisible({ timeout: 20_000 })
   await expect(card).toContainText('skipped or delayed lunch')

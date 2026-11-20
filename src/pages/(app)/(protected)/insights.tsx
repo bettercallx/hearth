@@ -4,10 +4,10 @@ import { useMutations, useQuery } from 'deepspace'
 import { Sparkles, Plus, Check, Info } from 'lucide-react'
 import { Button, buttonVariants, useToast } from '@/components/ui'
 import { MoodChart } from '@/components/hearth/MoodChart'
-import { Tag } from '@/components/hearth/bits'
+import { MonthCalendar } from '@/components/hearth/MonthCalendar'
 import { callAction, formatDay, localToday } from '@/lib/client'
 import { addDays, computeStats, findPatterns, type Confidence, type DayPoint, type Pattern } from '@/lib/patterns'
-import { POSITIVES, STRESSORS, normalizeSignals } from '@/lib/signals'
+import { normalizeSignals } from '@/lib/signals'
 import type { Entry, Habit, Insight } from '@/lib/types'
 import type { Suggestion } from '@/server/journal-ai'
 import { cn } from '@/lib/utils'
@@ -76,10 +76,17 @@ export default function InsightsPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-5 pb-24 pt-10">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <h1 className="sr-only">Looking back</h1>
+      {status === 'loading' ? (
+        <div className="h-80 animate-pulse rounded-2xl bg-muted" />
+      ) : (
+        <MonthCalendar entries={entries} />
+      )}
+
+      <div className="mt-14 flex flex-wrap items-end justify-between gap-4 border-t border-border pt-10">
         <div>
-          <h1 className="font-display text-3xl font-light text-foreground">Looking back</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <h2 className="font-display text-2xl font-light text-foreground">What Hearth is noticing</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             {stats.daysLogged} of the last {days} days written · {formatDay(start)} – {formatDay(today)}
           </p>
         </div>
@@ -101,9 +108,7 @@ export default function InsightsPage() {
         </div>
       </div>
 
-      {status === 'loading' ? (
-        <div className="mt-8 h-64 animate-pulse rounded-2xl bg-muted" />
-      ) : stats.daysLogged === 0 ? (
+      {status === 'loading' ? null : stats.daysLogged === 0 ? (
         <div className="mt-10 rounded-2xl border border-dashed border-border p-8 text-center">
           <p className="text-muted-foreground">No entries in this range yet.</p>
           <Link to="/home" className={cn(buttonVariants(), 'mt-4')}>
@@ -112,22 +117,13 @@ export default function InsightsPage() {
         </div>
       ) : (
         <>
-          {/* Numbers */}
-          <section className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat label="Average mood" value={stats.avgMood != null ? `${stats.avgMood}/5` : '—'} hint={trendHint(stats.moodTrend)} />
-            <Stat label="Average sleep" value={stats.avgSleep != null ? `${stats.avgSleep}h` : '—'} />
-            <Stat label="Lunch on time" value={stats.lunchOnTimeRate != null ? `${Math.round(stats.lunchOnTimeRate * 100)}%` : '—'} />
-            <Stat label="Days you moved" value={`${stats.exerciseDays}`} />
-          </section>
-
-          <section className="mt-4 rounded-2xl border border-border bg-card p-5">
+          <section className="mt-6 rounded-2xl border border-border bg-card p-5">
             <MoodChart points={series} />
           </section>
 
           {/* Patterns */}
-          <section className="mt-10" data-testid="patterns">
-            <h2 className="font-display text-2xl font-light text-foreground">What Hearth is noticing</h2>
-            <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
+          <section className="mt-6" data-testid="patterns">
+            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
               Compared across your own days, not other people. These are hints from a small number of days, not causes —
               tap a date to read what you wrote.
@@ -143,12 +139,6 @@ export default function InsightsPage() {
                 {patterns.map((p) => (
                   <PatternCard key={p.id} pattern={p} note={notes.get(p.id)} />
                 ))}
-              </div>
-            )}
-            {(stats.topStressors.length > 0 || stats.topPositives.length > 0) && (
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <TagList title="What weighed on you" items={stats.topStressors.map((t) => `${STRESSORS[t.tag]} · ${t.count}`)} />
-                <TagList title="What filled you up" items={stats.topPositives.map((t) => `${POSITIVES[t.tag]} · ${t.count}`)} />
               </div>
             )}
           </section>
@@ -176,35 +166,6 @@ export default function InsightsPage() {
           </section>
         </>
       )}
-    </div>
-  )
-}
-
-function trendHint(trend: number | null) {
-  if (trend == null || Math.abs(trend) < 0.3) return undefined
-  return trend > 0 ? 'lifting lately' : 'dipping lately'
-}
-
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 font-display text-2xl text-foreground">{value}</p>
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-    </div>
-  )
-}
-
-function TagList({ title, items }: { title: string; items: string[] }) {
-  if (!items.length) return null
-  return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <p className="text-xs text-muted-foreground">{title}</p>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {items.map((i) => (
-          <Tag key={i}>{i}</Tag>
-        ))}
-      </div>
     </div>
   )
 }
