@@ -6,8 +6,8 @@ import type { Entry } from '@/lib/types'
 import { useMutations } from 'deepspace'
 import { ConfirmModal, useToast } from '@/components/ui'
 
-/** Cool dusk for low days, warming to ember for good ones. */
-const MOOD_COLORS = ['#6f7d9c', '#8d86a6', '#b3a294', '#df9f5c', '#f2c27b']
+/** Cool dusk for low days, warming to sunlight for good ones (theme tokens). */
+const MOOD_COLORS = [1, 2, 3, 4, 5].map((n) => `var(--hearth-mood-${n})`)
 const MOOD_WORDS = ['very low', 'low', 'okay', 'good', 'very good']
 
 export function moodColor(mood: number | null | undefined) {

@@ -6,15 +6,19 @@ export type RecorderState = 'idle' | 'recording' | 'unsupported' | 'denied'
  *  (two minutes of 16 kHz WAV is ~3.8 MB, ~5 MB as base64). */
 const MAX_SECONDS = 120
 
+/** How many recent loudness samples the waveform shows, and how often one is taken. */
+export const WAVE_SAMPLES = 64
+const WAVE_INTERVAL_MS = 60
+
 /**
- * Microphone capture with a live loudness level (0–1) for the listening orb.
- * `stop()` resolves with the recorded audio.
+ * Microphone capture with a rolling loudness history (0–1 each) for the
+ * waveform. `stop()` resolves with the recorded audio.
  */
 export function useRecorder() {
   const [state, setState] = useState<RecorderState>(() =>
     typeof window !== 'undefined' && 'MediaRecorder' in window && navigator.mediaDevices ? 'idle' : 'unsupported',
   )
-  const [level, setLevel] = useState(0)
+  const [levels, setLevels] = useState<number[]>([])
   const [seconds, setSeconds] = useState(0)
   const recorder = useRef<MediaRecorder | null>(null)
   const chunks = useRef<Blob[]>([])
@@ -24,7 +28,7 @@ export function useRecorder() {
   const release = useCallback(() => {
     cleanup.current()
     cleanup.current = () => {}
-    setLevel(0)
+    setLevels([])
   }, [])
 
   useEffect(() => release, [release])
@@ -65,15 +69,13 @@ export function useRecorder() {
     analyser.fftSize = 512
     ctx.createMediaStreamSource(stream).connect(analyser)
     const buf = new Uint8Array(analyser.fftSize)
-    let raf = 0
-    const tick = () => {
+    const sample = setInterval(() => {
       analyser.getByteTimeDomainData(buf)
       let sum = 0
       for (const v of buf) sum += ((v - 128) / 128) ** 2
-      setLevel(Math.min(1, Math.sqrt(sum / buf.length) * 4))
-      raf = requestAnimationFrame(tick)
-    }
-    tick()
+      const level = Math.min(1, Math.sqrt(sum / buf.length) * 4)
+      setLevels((prev) => [...prev.slice(-(WAVE_SAMPLES - 1)), level])
+    }, WAVE_INTERVAL_MS)
     const started = Date.now()
     const timer = setInterval(() => {
       const s = Math.floor((Date.now() - started) / 1000)
@@ -82,7 +84,7 @@ export function useRecorder() {
     }, 250)
 
     cleanup.current = () => {
-      cancelAnimationFrame(raf)
+      clearInterval(sample)
       clearInterval(timer)
       stream.getTracks().forEach((t) => t.stop())
       void ctx.close()
@@ -93,5 +95,5 @@ export function useRecorder() {
     setState('recording')
   }, [release])
 
-  return { state, level, seconds, start, stop }
+  return { state, levels, seconds, start, stop }
 }

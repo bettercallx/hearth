@@ -59,7 +59,6 @@ export default function Landing() {
           </section>
 
           <section aria-label="What Hearth looks like" className="relative">
-            <div className="pointer-events-none absolute -top-16 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(233,138,77,0.25)_0%,rgba(233,138,77,0)_70%)]" />
             <div className="relative space-y-4">
               <figure className="rounded-2xl border border-border bg-card p-6">
                 <blockquote className="text-sm leading-relaxed text-muted-foreground">

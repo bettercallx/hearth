@@ -1,13 +1,13 @@
-/* home pattern: product-preview-first — the listening companion is the home; signed-out visitors see it idle with a sign-in invitation */
+/* home pattern: product-preview-first — today's notebook page is the home; signed-out visitors see the same page with a sign-in invitation */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AuthOverlay, useAuth, useMutations, useQuery } from 'deepspace'
-import { Keyboard, Mic, Square, Loader2, ArrowRight } from 'lucide-react'
+import { Mic, Square, ArrowRight } from 'lucide-react'
 import { Button, Textarea, useToast } from '@/components/ui'
-import { ListeningOrb, type OrbMode } from '@/components/hearth/ListeningOrb'
+import { VoiceWave } from '@/components/hearth/VoiceWave'
 import { CrisisCard, EntryCard, SpeakButton, Tag } from '@/components/hearth/bits'
-import { callAction, localToday, transcribe } from '@/lib/client'
+import { callAction, formatDay, localToday, transcribe } from '@/lib/client'
 import { useRecorder } from '@/lib/useRecorder'
 import type { Entry } from '@/lib/types'
 
@@ -19,12 +19,16 @@ const PROMPTS = [
   'What would you like to let go of tonight?',
 ]
 
-function greeting() {
-  const h = new Date().getHours()
-  if (h < 5) return 'Still up?'
-  if (h < 12) return 'Good morning.'
-  if (h < 18) return 'Good afternoon.'
-  return 'Good evening.'
+/** Ruled-paper lines behind the editor, spaced to match its 2rem line height. */
+const RULED =
+  'bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_calc(2rem-1px),var(--color-border)_calc(2rem-1px),var(--color-border)_2rem)] bg-local leading-8'
+
+function DateLine() {
+  return (
+    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+      {formatDay(localToday(), { weekday: 'long', month: 'long', day: 'numeric' })}
+    </p>
+  )
 }
 
 export default function HomePage() {
@@ -35,19 +39,20 @@ export default function HomePage() {
 function SignedOutPreview() {
   const [showAuth, setShowAuth] = useState(false)
   return (
-    <div className="mx-auto flex min-h-full max-w-xl flex-col items-center justify-center gap-8 px-6 py-16 text-center">
-      <ListeningOrb mode="idle" />
-      <div className="space-y-3">
-        <h1 className="font-display text-3xl font-light text-foreground sm:text-4xl">{greeting()} How was today?</h1>
-        <p className="text-muted-foreground">
-          Talk or type for a minute. Hearth listens, reflects back what it heard, and over a week or two helps you see
-          what lifts you and what wears you down.
-        </p>
+    <div className="mx-auto max-w-2xl px-6 pb-20 pt-16 sm:pt-24">
+      <DateLine />
+      <h1 className="mt-4 font-display text-4xl font-light leading-tight text-foreground sm:text-5xl">How was today?</h1>
+      <VoiceWave levels={[]} active={false} className="mt-8" />
+      <p className="mt-6 max-w-lg leading-relaxed text-muted-foreground">
+        Talk or write for a minute. Hearth listens, reflects back what it heard, and over a week or two helps you see what
+        lifts you and what wears you down.
+      </p>
+      <div className="mt-8 flex flex-wrap items-center gap-4">
+        <Button size="lg" className="rounded-full px-6" onClick={() => setShowAuth(true)} data-testid="home-sign-in">
+          Sign in to start
+        </Button>
+        <span className="text-sm text-muted-foreground">Private to you. Not even the app's admins can read it.</span>
       </div>
-      <Button size="lg" onClick={() => setShowAuth(true)} data-testid="home-sign-in">
-        Sign in to start
-      </Button>
-      <p className="text-xs text-muted-foreground/80">Your entries are private to you — not even the app owner can read them.</p>
       {showAuth && <AuthOverlay onClose={() => setShowAuth(false)} />}
     </div>
   )
@@ -97,7 +102,7 @@ function Companion() {
     try {
       const words = await transcribe(blob)
       if (!words) {
-        error("I didn't catch anything", 'Try again a little closer to the mic, or type instead.')
+        error("I didn't catch anything", 'Try again a little closer to the mic, or write instead.')
       } else {
         setText((t) => (t ? `${t}\n\n${words}` : words))
         setSource('voice')
@@ -132,145 +137,161 @@ function Companion() {
     setSeeding(true)
     try {
       const r = await callAction<{ created: number }>('seedDemo', { today })
-      success('Demo journal added', `${r.created} days of sample entries are in your journal.`)
+      success('Sample journal added', `${r.created} days of sample entries are in your journal.`)
     } catch (e) {
-      error('Could not add demo data', e instanceof Error ? e.message : undefined)
+      error('Could not add the sample journal', e instanceof Error ? e.message : undefined)
     } finally {
       setSeeding(false)
     }
   }
 
-  const orbMode: OrbMode = phase === 'recording' ? 'listening' : phase === 'compose' ? 'idle' : 'thinking'
+  const clock = `${Math.floor(recorder.seconds / 60)}:${String(recorder.seconds % 60).padStart(2, '0')}`
   const statusLine =
     phase === 'recording'
-      ? `Listening… ${Math.floor(recorder.seconds / 60)}:${String(recorder.seconds % 60).padStart(2, '0')}`
+      ? 'Listening…'
       : phase === 'transcribing'
         ? 'Catching your words…'
         : phase === 'saving' || phase === 'thinking'
-          ? 'Sitting with what you said…'
-          : null
+          ? 'Reading what you wrote…'
+          : latest || typing || text
+            ? ''
+            : 'Talk for a minute, or write. Nothing is shared until you say so.'
+
+  const busy = phase !== 'compose' && phase !== 'recording'
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col items-center px-5 pb-20 pt-10 sm:pt-14">
-      <ListeningOrb mode={orbMode} level={recorder.level} size={200} />
-
-      <h1 className="mt-6 text-center font-display text-3xl font-light text-foreground sm:text-[2.5rem] sm:leading-tight">
-        {latest ? 'Thank you for telling me.' : `${greeting()} ${prompt}`}
+    <div className="mx-auto max-w-2xl px-6 pb-24 pt-12 sm:pt-20">
+      <DateLine />
+      <h1 className="mt-4 font-display text-4xl font-light leading-tight text-foreground sm:text-5xl">
+        {latest ? 'Thank you for telling me.' : prompt}
       </h1>
-      <p className="mt-3 h-5 text-sm text-muted-foreground" aria-live="polite">
-        {statusLine ?? (latest ? '' : 'Tap the mic and just talk. Hearth will listen.')}
+
+      <VoiceWave levels={recorder.levels} active={phase === 'recording'} className="mt-8" />
+      <p className="mt-3 min-h-5 text-sm text-muted-foreground" aria-live="polite">
+        {statusLine}
       </p>
 
-      {/* Reflection for the entry just written */}
+      {/* Reflection for the entry just written, as a note in the margin */}
       {latest && latest.data.status !== 'pending' && (
-        <section data-testid="reflection" className="mt-6 w-full space-y-4">
+        <section data-testid="reflection" className="mt-8 space-y-4">
           {latest.data.riskFlag ? (
             <>
               {latest.data.reflection && (
-                <p className="text-center font-display text-xl font-light leading-relaxed text-foreground">{latest.data.reflection}</p>
+                <p className="border-l-2 border-primary pl-5 font-display text-xl font-light leading-relaxed text-foreground">
+                  {latest.data.reflection}
+                </p>
               )}
               <CrisisCard />
             </>
           ) : latest.data.status === 'failed' ? (
-            <p className="text-center text-muted-foreground">Your words are saved. I couldn't reflect on them just now — they will still count.</p>
+            <p className="text-muted-foreground">Your words are saved. I couldn't reflect on them just now; they still count.</p>
           ) : (
-            <div className="rounded-2xl border border-border bg-card p-6 text-center">
+            <div className="border-l-2 border-primary pl-5">
               <p className="font-display text-xl font-light leading-relaxed text-foreground sm:text-2xl">{latest.data.reflection}</p>
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <div className="mt-4 flex flex-wrap items-center gap-2">
                 {latest.data.moodTags?.map((t) => <Tag key={t}>{t}</Tag>)}
                 {latest.data.reflection && <SpeakButton text={latest.data.reflection} />}
               </div>
-              {latest.data.summary && <p className="mt-4 text-sm text-muted-foreground">Noted: {latest.data.summary}</p>}
+              {latest.data.summary && <p className="mt-3 text-sm text-muted-foreground">Noted: {latest.data.summary}</p>}
             </div>
           )}
         </section>
       )}
 
       {/* Composer */}
-      <div className="mt-8 w-full">
+      <div className="mt-8">
         {typing || text ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <Textarea
               ref={textRef}
               data-testid="entry-input"
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Write as much or as little as you like…"
-              className="min-h-[160px] resize-y rounded-2xl bg-card p-4 text-[15px] leading-relaxed"
-              disabled={phase !== 'compose'}
+              className={`min-h-[12rem] resize-y rounded-none border-0 border-b border-border bg-transparent px-0 py-0 text-[16px] shadow-none focus-visible:ring-0 ${RULED}`}
+              disabled={busy || phase === 'recording'}
             />
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => void startRecording()} disabled={phase !== 'compose' || recorder.state === 'unsupported'}>
+              {phase === 'recording' ? (
+                <Button variant="secondary" size="sm" className="rounded-full" onClick={() => void stopRecording()}>
+                  <Square className="h-3.5 w-3.5" aria-hidden /> Done · {clock}
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => void startRecording()}
+                  disabled={busy || recorder.state === 'unsupported'}
+                >
                   <Mic className="h-4 w-4" aria-hidden /> Add by voice
                 </Button>
-                {phase === 'recording' && (
-                  <Button variant="secondary" size="sm" onClick={() => void stopRecording()}>
-                    <Square className="h-3.5 w-3.5" aria-hidden /> Done talking
-                  </Button>
-                )}
-              </div>
-              <Button data-testid="save-entry" onClick={() => void save()} disabled={!ready || !text.trim() || phase !== 'compose'}>
-                {phase === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+              )}
+              <Button
+                data-testid="save-entry"
+                className="rounded-full px-5"
+                onClick={() => void save()}
+                disabled={!ready || !text.trim() || phase !== 'compose'}
+                loading={phase === 'saving'}
+              >
                 Share with Hearth
               </Button>
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-wrap items-center gap-5">
             {phase === 'recording' ? (
-              <button
-                type="button"
-                onClick={() => void stopRecording()}
-                className="grid h-16 w-16 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_0_0_8px_rgba(233,138,77,0.15)] transition-transform hover:scale-105"
-                aria-label="Stop recording"
-              >
-                <Square className="h-5 w-5" aria-hidden />
-              </button>
+              <Button size="lg" className="rounded-full px-6" onClick={() => void stopRecording()} aria-label="Stop recording">
+                <Square className="h-4 w-4" aria-hidden /> Done · {clock}
+              </Button>
             ) : (
-              <button
-                type="button"
+              <Button
+                size="lg"
+                className="rounded-full px-6"
                 data-testid="mic-button"
                 onClick={() => void startRecording()}
-                disabled={phase !== 'compose' || recorder.state === 'unsupported'}
-                className="grid h-16 w-16 place-items-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105 disabled:opacity-50"
+                disabled={busy || recorder.state === 'unsupported'}
+                loading={phase === 'transcribing'}
                 aria-label="Start talking"
               >
-                {phase === 'transcribing' ? <Loader2 className="h-6 w-6 animate-spin" aria-hidden /> : <Mic className="h-6 w-6" aria-hidden />}
+                {phase !== 'transcribing' && <Mic className="h-4 w-4" aria-hidden />} Talk
+              </Button>
+            )}
+            {phase !== 'recording' && (
+              <button
+                type="button"
+                data-testid="type-instead"
+                onClick={() => setTyping(true)}
+                disabled={busy}
+                className="text-sm text-muted-foreground underline decoration-border underline-offset-4 hover:text-foreground hover:decoration-foreground disabled:opacity-50"
+              >
+                or write instead
               </button>
             )}
-            {recorder.state === 'denied' && (
-              <p className="text-sm text-muted-foreground">Microphone access was blocked. You can type instead.</p>
-            )}
-            <button
-              type="button"
-              data-testid="type-instead"
-              onClick={() => setTyping(true)}
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            >
-              <Keyboard className="h-4 w-4" aria-hidden /> I'd rather type
-            </button>
           </div>
+        )}
+        {recorder.state === 'denied' && (
+          <p className="mt-3 text-sm text-muted-foreground">Microphone access was blocked. You can write instead.</p>
         )}
       </div>
 
-      {/* First run: offer a demo journal so patterns are visible right away */}
+      {/* First run: offer a sample journal so patterns are visible right away */}
       {anyStatus === 'ready' && anyEntries.length === 0 && (
-        <div className="mt-12 w-full rounded-2xl border border-dashed border-border p-5 text-center">
+        <div className="mt-16 border-t border-border pt-6">
           <p className="text-sm text-muted-foreground">
-            Patterns need a week or two of entries. Want to see what Hearth notices? Load ten days of a sample journal
-            (you can remove it any time in Settings).
+            Patterns need a week or two of entries. Want to see what Hearth notices first? Load ten days of a sample
+            journal; you can remove it any time in Settings.
           </p>
-          <Button variant="secondary" size="sm" className="mt-3" onClick={() => void seed()} loading={seeding} data-testid="seed-demo">
+          <Button variant="secondary" size="sm" className="mt-3 rounded-full" onClick={() => void seed()} loading={seeding} data-testid="seed-demo">
             Load a sample journal
           </Button>
         </div>
       )}
 
       {earlier.length > 0 && (
-        <section className="mt-12 w-full space-y-3">
+        <section className="mt-16 space-y-3 border-t border-border pt-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium text-muted-foreground">Earlier today</h2>
+            <h2 className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Earlier today</h2>
             <Link to="/journal" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
               Whole journal <ArrowRight className="h-3 w-3" aria-hidden />
             </Link>

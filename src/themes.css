@@ -16,36 +16,44 @@
  *   4. Switch to it via `data-theme` on <html> in index.html.
  */
 
-/* Ember — Hearth's theme: a quiet room at night lit by a low fire. Warm
- * charcoal grounds, parchment text, one ember accent reserved for the
- * listening orb and primary actions. */
-[data-theme="ember"] {
-  color-scheme: dark;
-  --color-background: #17110f;
-  --color-foreground: #f2e8dc;
-  --color-card: #211915;
-  --color-card-foreground: #f2e8dc;
-  --color-popover: #251c18;
-  --color-popover-foreground: #f2e8dc;
-  --color-primary: #e98a4d;
-  --color-primary-foreground: #1b120d;
-  --color-secondary: #2b211c;
-  --color-secondary-foreground: #f2e8dc;
-  --color-muted: #2b211c;
-  --color-muted-foreground: #b3a294;
-  --color-accent: #33271f;
-  --color-accent-foreground: #f2e8dc;
-  --color-destructive: #e5674f;
+/* Paper — Hearth's theme: a good notebook. Warm off-white page, soft ink
+ * text, and one terracotta accent used sparingly for the primary action and
+ * the mood line. Data colors are tokens so charts follow the theme. */
+[data-theme="paper"] {
+  color-scheme: light;
+  --color-background: #f6f1e8;
+  --color-foreground: #2b2622;
+  --color-card: #fbf8f2;
+  --color-card-foreground: #2b2622;
+  --color-popover: #fffdf9;
+  --color-popover-foreground: #2b2622;
+  --color-primary: #a4492a;
+  --color-primary-foreground: #fffaf4;
+  --color-secondary: #ede6da;
+  --color-secondary-foreground: #2b2622;
+  --color-muted: #ede6da;
+  --color-muted-foreground: #6e645b;
+  --color-accent: #e6ddcf;
+  --color-accent-foreground: #2b2622;
+  --color-destructive: #b3372b;
   --color-destructive-foreground: #ffffff;
-  --color-border: rgba(242, 232, 220, 0.09);
-  --color-input: rgba(242, 232, 220, 0.14);
-  --color-ring: #e98a4d;
-  --radius: 0.9rem;
-  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
-  --shadow-card-hover: 0 4px 16px 0 rgba(0, 0, 0, 0.3);
-  --color-shell: #17110f;
-  --color-shell-panel: #211915;
+  --color-border: rgba(43, 38, 34, 0.12);
+  --color-input: rgba(43, 38, 34, 0.18);
+  --color-ring: #a4492a;
+  --radius: 0.6rem;
+  --shadow-card: 0 1px 2px 0 rgba(43, 38, 34, 0.04);
+  --shadow-card-hover: 0 2px 10px 0 rgba(43, 38, 34, 0.08);
+  --color-shell: #f6f1e8;
+  --color-shell-panel: #fbf8f2;
   --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+
+  --hearth-mood-line: #a4492a;
+  --hearth-energy-line: #4f6d96;
+  --hearth-mood-1: #5f72a0;
+  --hearth-mood-2: #8f87b0;
+  --hearth-mood-3: #b7a691;
+  --hearth-mood-4: #d58d4e;
+  --hearth-mood-5: #d9a63c;
 }
 
 .font-display {
@@ -53,17 +61,6 @@
   font-optical-sizing: auto;
 }
 
-@keyframes hearth-breathe {
-  0%, 100% { transform: scale(0.94); opacity: 0.85; }
-  50% { transform: scale(1.04); opacity: 1; }
-}
-
-@keyframes hearth-flicker {
-  0%, 100% { transform: scale(0.97); opacity: 0.8; }
-  30% { transform: scale(1.02); opacity: 1; }
-  60% { transform: scale(0.99); opacity: 0.9; }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  [data-orb-mode] * { animation: none !important; transition: none !important; }
+  [data-voice-wave] * { transition: none !important; animation: none !important; }
 }

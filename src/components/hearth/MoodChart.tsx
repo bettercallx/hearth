@@ -49,12 +49,12 @@ export function MoodChart({ points }: { points: Point[] }) {
             </text>
           </g>
         ))}
-        <path d={path('energy')} fill="none" stroke="#8fa3c7" strokeWidth={2} strokeDasharray="5 4" strokeLinecap="round" strokeLinejoin="round" />
-        <path d={path('mood')} fill="none" stroke="#e98a4d" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+        <path d={path('energy')} fill="none" stroke="var(--hearth-energy-line)" strokeWidth={2} strokeDasharray="5 4" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={path('mood')} fill="none" stroke="var(--hearth-mood-line)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
         {points.map((p, i) => (
           <g key={p.date}>
             {p.mood != null && (
-              <circle cx={x(i)} cy={y(p.mood)} r={3.5} fill="#e98a4d">
+              <circle cx={x(i)} cy={y(p.mood)} r={3.5} fill="var(--hearth-mood-line)">
                 <title>{`${formatDay(p.date)}: mood ${p.mood}/5${p.energy != null ? `, afternoon energy ${p.energy}/5` : ''}`}</title>
               </circle>
             )}
@@ -68,10 +68,10 @@ export function MoodChart({ points }: { points: Point[] }) {
       </svg>
       <figcaption className="mt-2 flex gap-5 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-0.5 w-4 rounded bg-[#e98a4d]" /> Mood
+          <span className="h-0.5 w-4 rounded bg-[var(--hearth-mood-line)]" /> Mood
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-0.5 w-4 rounded border-t-2 border-dashed border-[#8fa3c7]" /> Afternoon energy
+          <span className="h-0.5 w-4 rounded border-t-2 border-dashed border-[var(--hearth-energy-line)]" /> Afternoon energy
         </span>
       </figcaption>
     </figure>

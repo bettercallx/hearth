@@ -18,9 +18,9 @@
 
 export const THEMES = [
   {
-    id: 'ember',
-    label: 'Ember',
-    description: 'Warm charcoal and parchment with an ember accent — a quiet room at night.',
+    id: 'paper',
+    label: 'Paper',
+    description: 'Warm off-white page, soft ink, one terracotta accent — a good notebook.',
   },
   {
     id: 'slate',
@@ -33,9 +33,9 @@ export type ThemeId = (typeof THEMES)[number]['id']
 
 /** Read the currently active theme id from <html data-theme>. */
 export function getActiveTheme(): ThemeId {
-  if (typeof document === 'undefined') return 'ember'
+  if (typeof document === 'undefined') return 'paper'
   const id = document.documentElement.getAttribute('data-theme') as ThemeId | null
-  return id ?? 'ember'
+  return id ?? 'paper'
 }
 
 /** Look up a theme entry by id, or fall back to the first theme. */

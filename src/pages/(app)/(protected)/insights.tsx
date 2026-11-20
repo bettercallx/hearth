@@ -23,7 +23,7 @@ const LAW_LABEL: Record<Suggestion['law'], string> = {
 
 const CONFIDENCE_STYLE: Record<Confidence, string> = {
   consistent: 'border-primary/50 text-primary',
-  emerging: 'border-[#8fa3c7]/50 text-[#a9b8d6]',
+  emerging: 'border-[var(--hearth-energy-line)]/50 text-[var(--hearth-energy-line)]',
   tentative: 'border-border text-muted-foreground',
 }
 
