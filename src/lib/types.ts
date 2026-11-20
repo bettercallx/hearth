@@ -9,6 +9,7 @@ export type Entry = {
   source: 'text' | 'voice'
   status: 'pending' | 'analyzed' | 'failed'
   mood?: number | null
+  moodEdited?: boolean
   moodTags?: string[]
   summary?: string
   reflection?: string

@@ -374,10 +374,10 @@ function Companion() {
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Earlier today</h2>
             <Link
-              to="/journal"
+              to="/insights"
               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
-              Whole journal <ArrowRight className="h-3 w-3" aria-hidden />
+              All your days <ArrowRight className="h-3 w-3" aria-hidden />
             </Link>
           </div>
           {earlier.map((r) => (

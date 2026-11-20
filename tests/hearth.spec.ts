@@ -14,6 +14,17 @@ test.describe.configure({ mode: 'serial', timeout: 120_000 })
 
 type Page = import('@playwright/test').Page
 
+/** The browser's local calendar date — tests run on the same machine. */
+function today() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+function daysAgo(n: number) {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 /** Entries each test wrote, by page, so afterEach can delete them. */
 const created = new Map<Page, string[]>()
 
@@ -38,7 +49,7 @@ async function writeEntry(page: Page, text: string, opts: { share?: boolean } = 
 test.afterEach(async () => {
   for (const [page, ids] of created) {
     await page.unroute('**/api/actions/analyzeEntry').catch(() => {})
-    await page.goto('/journal')
+    await page.goto(`/insights?day=${today()}`)
     for (const id of ids) {
       const card = page.locator(`[data-entry-id="${id}"]`)
       await card.getByRole('button', { name: 'Read entry' }).click()
@@ -72,7 +83,7 @@ test('sample journal surfaces the lunch → afternoon energy pattern with eviden
   if ((await filled.count()) === 0) await calendar.getByRole('button', { name: 'Previous month' }).click()
   await expect(filled.first()).toBeVisible()
   await filled.last().click()
-  await expect(page.getByTestId('day-detail')).toBeVisible()
+  await expect(page.getByTestId('day-panel').getByTestId('entry-card').first()).toBeVisible()
 
   const card = page.locator('[data-pattern-id="lunch:energyAfternoon"]')
   await expect(card).toBeVisible({ timeout: 20_000 })
@@ -94,6 +105,30 @@ test('sample journal surfaces the lunch → afternoon energy pattern with eviden
   await habit.getByRole('button', { name: 'Delete habit' }).click()
   await page.getByRole('button', { name: 'Delete', exact: true }).click()
   await expect(habit).toHaveCount(0)
+})
+
+test('correcting a mood updates the calendar and the patterns, live', async ({ users }) => {
+  const [alice] = await users(['Alice'])
+  const page = alice.page
+  // Sample day 2 (skipped lunch, mood "low") — the day the lunch→mood pattern leans on.
+  const day = daysAgo(9)
+  await page.goto(`/insights?day=${day}`)
+  const square = page.locator(`button[data-date="${day}"]`)
+  const pattern = page.locator('[data-pattern-id="lunch:mood"]')
+  await expect(pattern).toBeVisible({ timeout: 20_000 })
+  const before = await pattern.innerText()
+  const card = page.getByTestId('day-panel').getByTestId('entry-card').first()
+
+  await card.getByTestId('mood-picker').click()
+  await page.getByRole('button', { name: 'Set mood to very good' }).click()
+  await expect(square).toHaveAttribute('aria-label', /very good/)
+  await expect.poll(() => pattern.innerText()).not.toBe(before)
+
+  // Put it back so the sample journal stays as designed.
+  await card.getByTestId('mood-picker').click()
+  await page.getByRole('button', { name: 'Set mood to low' }).click()
+  await expect(square).toHaveAttribute('aria-label', /mood low/)
+  await expect.poll(() => pattern.innerText()).toBe(before)
 })
 
 test('writing an entry gets a reflection, mood tags and a summary back', async ({ users }) => {
@@ -150,8 +185,8 @@ test("privacy: Bob can neither see nor act on Alice's entries", async ({ users }
   await expect(alice.page.getByTestId('reflection')).toBeVisible({ timeout: 60_000 })
 
   // 1. RBAC: Bob's journal never receives Alice's rows over the socket.
-  await bob.page.goto('/journal')
-  await expect(bob.page.getByRole('heading', { name: 'Your journal' })).toBeVisible({ timeout: 20_000 })
+  await bob.page.goto(`/insights?day=${today()}`)
+  await expect(bob.page.getByTestId('day-panel')).toBeVisible({ timeout: 20_000 })
   await bob.page.waitForTimeout(2000)
   await expect(bob.page.getByText(marker)).toHaveCount(0)
   await expect(bob.page.getByText('alice-private')).toHaveCount(0)
@@ -207,14 +242,14 @@ test('exchange diary: pair by link, share selectively, reply live, unpair revoke
   await expect(card.getByTestId('replies')).toContainText('Glad dinner helped')
 
   // Alice sees Bob's reply on her own entry, live.
-  await alice.page.goto('/journal')
+  await alice.page.goto(`/insights?day=${today()}`)
   const own = alice.page.locator(`[data-testid="entry-card"][data-entry-id="${sharedId}"]`)
   await expect(own.getByTestId('shared-badge')).toContainText('Bob', { timeout: 15_000 })
   await expect(own.getByTestId('replies')).toContainText('🤗')
   await expect(own.getByTestId('replies')).toContainText('Glad dinner helped')
 
-  await bob.page.goto('/journal')
-  await expect(bob.page.getByRole('heading', { name: 'Your journal' })).toBeVisible()
+  await bob.page.goto(`/insights?day=${today()}`)
+  await expect(bob.page.getByTestId('day-panel')).toBeVisible()
   await bob.page.waitForTimeout(1500)
   await expect(bob.page.getByText(sharedMarker)).toHaveCount(0)
 
@@ -225,7 +260,7 @@ test('exchange diary: pair by link, share selectively, reply live, unpair revoke
   await expect(bob.page.getByTestId('friend-name')).toHaveCount(0, { timeout: 15_000 })
   await expect(bob.page.getByText(sharedMarker)).toHaveCount(0, { timeout: 15_000 })
 
-  await alice.page.goto('/journal')
+  await alice.page.goto(`/insights?day=${today()}`)
   await expect(own).toBeVisible({ timeout: 15_000 })
   await expect(own.getByTestId('shared-badge')).toHaveCount(0)
 })

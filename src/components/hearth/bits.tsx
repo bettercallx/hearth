@@ -5,7 +5,8 @@ import { callAction, formatDay, speak } from '@/lib/client'
 import type { Entry } from '@/lib/types'
 import { useMutations, useQuery, useUserLookup } from 'deepspace'
 import { joinNames, useFriends } from '@/lib/social'
-import { ConfirmModal, useToast } from '@/components/ui'
+import { ConfirmModal, Popover, PopoverContent, PopoverTrigger, useToast } from '@/components/ui'
+import { EMPTY_SIGNALS } from '@/lib/signals'
 
 /** Cool dusk for low days, warming to sunlight for good ones (theme tokens). */
 const MOOD_COLORS = [1, 2, 3, 4, 5].map((n) => `var(--hearth-mood-${n})`)
@@ -27,6 +28,55 @@ export function MoodDot({ mood, className }: { mood: number | null | undefined; 
       className={cn('inline-block h-2.5 w-2.5 shrink-0 rounded-full', className)}
       style={{ background: moodColor(mood) }}
     />
+  )
+}
+
+/** The mood dot doubles as an editor: the person always has the last word on how a day felt. */
+export function MoodPicker({ id, entry }: { id: string; entry: Entry }) {
+  const { put, ready } = useMutations<Entry>('entries')
+  const [open, setOpen] = useState(false)
+  if (entry.riskFlag) return <MoodDot mood={null} />
+  const choose = (mood: number) => {
+    setOpen(false)
+    // Patterns read signals.mood, so the correction goes there too.
+    void put(id, { mood, moodEdited: true, signals: { ...(entry.signals ?? EMPTY_SIGNALS), mood } })
+  }
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <button
+            type="button"
+            data-testid="mood-picker"
+            disabled={!ready}
+            className="inline-flex items-center gap-1.5 rounded-full py-0.5 pr-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+            aria-label={`Mood: ${moodWord(entry.mood)}. Change mood`}
+          >
+            <MoodDot mood={entry.mood} className="ml-1" />
+            {moodWord(entry.mood)}
+          </button>
+        }
+      />
+      <PopoverContent className="w-auto p-2">
+        <p className="px-1 pb-2 text-xs text-muted-foreground">How did it really feel?</p>
+        <div className="flex gap-1">
+          {[1, 2, 3, 4, 5].map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => choose(m)}
+              aria-label={`Set mood to ${moodWord(m)}`}
+              aria-pressed={Math.round(entry.mood ?? 0) === m}
+              className="flex w-14 flex-col items-center gap-1 rounded-md px-1 py-1.5 text-[11px] text-muted-foreground hover:bg-accent aria-pressed:bg-accent aria-pressed:text-foreground"
+            >
+              <span className="h-4 w-4 rounded-full" style={{ background: moodColor(m) }} />
+              {moodWord(m)}
+            </button>
+          ))}
+        </div>
+        {entry.moodEdited && <p className="px-1 pt-2 text-[11px] text-muted-foreground">You set this mood yourself.</p>}
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -124,8 +174,8 @@ export function EntryCard({
   }
   return (
     <article id={`entry-${entry.entryDate}`} data-testid="entry-card" data-entry-id={id} className="rounded-xl border border-border bg-card p-5">
-      <header className="flex items-center gap-3">
-        <MoodDot mood={entry.mood} />
+      <header className="flex flex-wrap items-center gap-3">
+        <MoodPicker id={id} entry={entry} />
         {showDate && <span className="text-sm font-medium text-foreground">{formatDay(entry.entryDate)}</span>}
         {entry.source === 'voice' && <Mic className="h-3.5 w-3.5 text-muted-foreground" aria-label="Spoken entry" />}
         <div className="flex flex-wrap gap-1.5">

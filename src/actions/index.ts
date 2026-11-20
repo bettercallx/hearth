@@ -32,6 +32,7 @@ export function completeVia(tools: ActionTools): Complete {
 
 interface EntryData extends EntryRow {
   text: string
+  moodEdited?: boolean | number
   isDemo?: boolean | number
   sharedWith?: string[]
 }
@@ -55,6 +56,11 @@ const analyzeEntry: ActionHandler<Env> = async ({ userId, params, tools }) => {
 
   try {
     const a = await analyzeEntryText(completeVia(tools), entry.data.text)
+    // A mood the person set by hand wins over the model's reading.
+    if (entry.data.moodEdited && typeof entry.data.mood === 'number') {
+      a.mood = entry.data.mood
+      a.signals.mood = entry.data.mood
+    }
     const updated = await tools.update('entries', entryId, {
       status: 'analyzed',
       mood: a.mood,

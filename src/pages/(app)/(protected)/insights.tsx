@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useMutations, useQuery } from 'deepspace'
 import { Sparkles, Plus, Check, Info } from 'lucide-react'
 import { Button, ConfirmModal, buttonVariants, useToast } from '@/components/ui'
 import { MoodChart } from '@/components/hearth/MoodChart'
-import { MonthCalendar } from '@/components/hearth/MonthCalendar'
+import { FIRST_MONTH, MonthCalendar } from '@/components/hearth/MonthCalendar'
+import { EntryCard } from '@/components/hearth/bits'
 import { callAction, formatDay, localToday } from '@/lib/client'
 import { addDays, computeStats, findPatterns, type Confidence, type DayPoint, type Pattern } from '@/lib/patterns'
 import { normalizeSignals } from '@/lib/signals'
@@ -35,6 +36,36 @@ export default function InsightsPage() {
   const { error, success } = useToast()
 
   const { records: entries, status } = useMyEntries({ orderBy: 'createdAt', orderDir: 'asc', limit: 500 })
+
+  // ── Calendar + the selected day's entries (this is the journal) ──
+  const [params, setParams] = useSearchParams()
+  const dayParam = params.get('day')
+  const byDate = useMemo(() => {
+    const m = new Map<string, typeof entries>()
+    for (const e of entries) m.set(e.data.entryDate, [...(m.get(e.data.entryDate) ?? []), e])
+    return m
+  }, [entries])
+  const lastDay = useMemo(() => [...byDate.keys()].sort().at(-1) ?? null, [byDate])
+  // Month arrows override the month only until a day is picked or linked to.
+  const [monthOverride, setMonthOverride] = useState<{ month: string; forDay: string | null } | null>(null)
+  const naturalMonth = (dayParam ?? lastDay ?? today).slice(0, 7)
+  const month =
+    monthOverride && monthOverride.forDay === dayParam
+      ? monthOverride.month
+      : naturalMonth < FIRST_MONTH
+        ? FIRST_MONTH
+        : naturalMonth
+  const selected =
+    dayParam && dayParam.startsWith(month)
+      ? dayParam
+      : ([...byDate.keys()].filter((d) => d.startsWith(month)).sort().at(-1) ?? null)
+  const dayRows = selected ? [...(byDate.get(selected) ?? [])].reverse() : []
+
+  // Following an evidence link (?day=…) brings that day into view.
+  useEffect(() => {
+    if (dayParam) document.getElementById('day-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [dayParam])
+
   const { records: insights } = useQuery<Insight>('insights', { orderBy: 'createdAt', orderDir: 'desc', limit: 20 })
 
   const start = addDays(today, -(days - 1))
@@ -76,13 +107,48 @@ export default function InsightsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-5 pb-24 pt-10">
+    <div className="mx-auto max-w-5xl px-5 pb-24 pt-10">
       <h1 className="sr-only">Looking back</h1>
       {status === 'loading' ? (
         <div className="h-80 animate-pulse rounded-2xl bg-muted" />
       ) : (
-        <MonthCalendar entries={entries} />
+        <div className="grid gap-8 lg:grid-cols-[26rem_minmax(0,1fr)]">
+          <MonthCalendar
+            byDate={byDate}
+            month={month}
+            onMonthChange={(m) => setMonthOverride({ month: m, forDay: dayParam })}
+            selected={selected}
+            onSelect={(d) => setParams({ day: d }, { replace: true })}
+          />
+          <section id="day-panel" data-testid="day-panel" className="space-y-3 lg:pt-14">
+            {selected && dayRows.length > 0 ? (
+              <>
+                <h2 className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  {formatDay(selected, { weekday: 'long', month: 'long', day: 'numeric' })}
+                </h2>
+                {dayRows.map((r) => (
+                  <EntryCard key={r.recordId} id={r.recordId} createdAt={r.createdAt} entry={r.data} showDate={false} />
+                ))}
+              </>
+            ) : (
+              <p className="rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">
+                {entries.length ? (
+                  'Pick a colored day to read what you wrote.'
+                ) : (
+                  <>
+                    Your days will fill this calendar.{' '}
+                    <Link to="/home" className="text-foreground underline underline-offset-4">
+                      Write your first entry
+                    </Link>
+                    .
+                  </>
+                )}
+              </p>
+            )}
+          </section>
+        </div>
       )}
+      <div className="max-w-3xl">
 
       <div className="mt-14 flex flex-wrap items-end justify-between gap-4 border-t border-border pt-10">
         <div>
@@ -167,6 +233,7 @@ export default function InsightsPage() {
           </section>
         </>
       )}
+      </div>
     </div>
   )
 }
@@ -186,7 +253,7 @@ function PatternCard({ pattern, note }: { pattern: Pattern; note?: string }) {
         {pattern.evidence.map((d) => (
           <Link
             key={d}
-            to={`/journal#entry-${d}`}
+            to={`/insights?day=${d}`}
             className="rounded-full bg-secondary px-2 py-0.5 text-xs text-foreground/80 hover:bg-accent hover:text-foreground"
           >
             {formatDay(d, { month: 'short', day: 'numeric' })}

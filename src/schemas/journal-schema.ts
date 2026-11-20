@@ -36,6 +36,8 @@ export const entriesSchema: CollectionSchema = {
       interpretation: { kind: 'select', options: ['pending', 'analyzed', 'failed'] },
     },
     { name: 'mood', storage: 'number', interpretation: 'plain' },
+    /** The person corrected the mood; analysis must not overwrite it. */
+    { name: 'moodEdited', storage: 'number', interpretation: { kind: 'boolean' } },
     { name: 'moodTags', storage: 'text', interpretation: { kind: 'json' } },
     { name: 'summary', storage: 'text', interpretation: 'plain' },
     { name: 'reflection', storage: 'text', interpretation: 'plain' },
