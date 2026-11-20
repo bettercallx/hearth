@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 export type RecorderState = 'idle' | 'recording' | 'unsupported' | 'denied'
 
-/** Hard stop so a forgotten mic can't produce an enormous upload. */
-const MAX_SECONDS = 180
+/** Hard stop so a forgotten mic can't produce an enormous upload
+ *  (two minutes of 16 kHz WAV is ~3.8 MB, ~5 MB as base64). */
+const MAX_SECONDS = 120
 
 /**
  * Microphone capture with a live loudness level (0–1) for the listening orb.
