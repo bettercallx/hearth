@@ -1,49 +1,108 @@
 /**
- * Landing page — a STATIC page.
- *
- * It lives at the top level of src/pages/ (not under (app)/), so it renders
- * with no DeepSpace providers: no auth session fetch, no records WebSocket.
- * That makes it cheap to serve and safe for logged-out / crawler traffic.
- *
- * Need live data or auth here? Move this file to src/pages/(app)/index.tsx
- * and it becomes a dynamic page. Conversely, any page you want to keep static
- * (marketing, docs, legal) belongs at this top level.
- *
- * Top-level pages are also prerendered to static HTML at build
- * (prerender.ts, via vite.config.ts) so crawlers read real content.
- * Keep them renderable without a browser: no window/document during render,
- * prose in HTML text, reveal animations in CSS keyframes rather than JS-driven
- * initial states. `<Seo>` comes first and reads src/seo.ts.
+ * Landing page — a STATIC page (no providers, prerendered at build).
+ * Keep it renderable without a browser: no window/document during render.
+ * Layout: split hero — the pitch on one side, a still of the real product
+ * (a reflection and a pattern card) on the other.
  */
 
 import { Link } from 'react-router-dom'
 import { Seo } from '../components/Seo'
-import { APP_NAME } from '../constants'
 import { seo } from '../seo'
 
 export default function Landing() {
   return (
     <>
       <Seo {...seo} path="/" />
-      <div
-        data-testid="static-landing"
-        className="flex min-h-screen flex-col items-center justify-center px-6 text-center"
-      >
-        <p className="mb-3 text-sm uppercase tracking-widest text-muted-foreground">{APP_NAME}</p>
-        <h1 className="mb-4 max-w-2xl text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-          A DeepSpace app with a static front door
-        </h1>
-        <p className="mb-8 max-w-md text-muted-foreground">
-          This landing page ships no auth call and no realtime connection — it's a
-          plain static page. The live app, with sign-in and synced data, lives
-          behind the link below.
-        </p>
-        <Link
-          to="/home"
-          className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-        >
-          Enter the app
-        </Link>
+      <div data-testid="static-landing" className="min-h-screen bg-background text-foreground">
+        <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
+          <span className="font-display text-xl">Hearth</span>
+          <Link to="/home" className="text-sm text-muted-foreground hover:text-foreground">
+            Sign in
+          </Link>
+        </header>
+
+        <main className="mx-auto grid max-w-6xl items-center gap-14 px-6 pb-24 pt-10 lg:grid-cols-[1.1fr_1fr] lg:pt-20">
+          <section>
+            <h1 className="font-display text-5xl font-light leading-[1.05] sm:text-6xl">
+              Say how today went.
+              <br />
+              <em className="text-primary">Hearth listens.</em>
+            </h1>
+            <p className="mt-6 max-w-lg text-lg leading-relaxed text-muted-foreground">
+              Talk or type for a minute at the end of the day. Hearth reflects back what it heard, and over a week or
+              two it shows you, with the days to prove it, what lifts you and what quietly wears you down.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <Link
+                to="/home"
+                className="inline-flex items-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+              >
+                Start your first entry
+              </Link>
+              <span className="text-sm text-muted-foreground">Private to you. Not even the app's admins can read it.</span>
+            </div>
+
+            <dl className="mt-14 grid max-w-lg gap-6 border-t border-border pt-8 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="font-medium text-foreground">Patterns with receipts</dt>
+                <dd className="mt-1 text-muted-foreground">
+                  Every finding shows its numbers and links to the exact days behind it. Hearth only suggests, it never diagnoses.
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium text-foreground">Habits that fill themselves in</dt>
+                <dd className="mt-1 text-muted-foreground">
+                  Built on <em>Atomic Habits</em>: tiny, stacked habits Hearth tracks from what you say. Never miss twice.
+                </dd>
+              </div>
+            </dl>
+          </section>
+
+          <section aria-label="What Hearth looks like" className="relative">
+            <div className="pointer-events-none absolute -top-16 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(233,138,77,0.25)_0%,rgba(233,138,77,0)_70%)]" />
+            <div className="relative space-y-4">
+              <figure className="rounded-2xl border border-border bg-card p-6">
+                <blockquote className="text-sm leading-relaxed text-muted-foreground">
+                  “Back-to-back meetings, never got lunch. By 4pm I couldn't think straight…”
+                </blockquote>
+                <figcaption className="mt-4 font-display text-lg font-light leading-relaxed text-foreground">
+                  That's a lot to absorb on an empty stomach. Of course the afternoon felt foggy.
+                </figcaption>
+                <div className="mt-3 flex gap-1.5">
+                  {['drained', 'anxious'].map((t) => (
+                    <span key={t} className="rounded-full border border-border bg-secondary px-2.5 py-0.5 text-xs text-muted-foreground">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </figure>
+              <figure className="ml-0 rounded-2xl border border-border bg-card p-6 sm:ml-10">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-[15px] leading-relaxed text-foreground">
+                    On days you skipped or delayed lunch, your afternoon energy averaged 1.8/5 vs 3.8/5 on days you ate on time.
+                  </p>
+                  <span className="shrink-0 rounded-full border border-primary/50 px-2 py-0.5 text-[11px] text-primary">Consistent</span>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs">
+                  <span className="text-muted-foreground">Based on</span>
+                  {['Nov 2', 'Nov 3', 'Nov 5', 'Nov 8'].map((d) => (
+                    <span key={d} className="rounded-full bg-secondary px-2 py-0.5 text-foreground/80">
+                      {d}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-4 text-sm text-muted-foreground">
+                  <span className="mr-2 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">Make it obvious</span>
+                  After my morning schedule check, I'll block 30 minutes for lunch.
+                </p>
+              </figure>
+            </div>
+          </section>
+        </main>
+
+        <footer className="mx-auto max-w-6xl border-t border-border px-6 py-8 text-xs text-muted-foreground">
+          Hearth is a journaling companion, not therapy or medical advice. If you're in crisis in the US, call or text 988.
+        </footer>
       </div>
     </>
   )

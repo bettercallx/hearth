@@ -15,4 +15,18 @@ test.describe('API tests', () => {
     await page.waitForSelector('[data-testid="app-navigation"]', { timeout: 15000 })
     // If the app loaded and connected, the WS endpoint works
   })
+
+  for (const name of ['analyzeEntry', 'generateInsight', 'seedDemo', 'clearDemo']) {
+    test(`action ${name} refuses signed-out callers`, async ({ request }) => {
+      const res = await request.post(`/api/actions/${name}`, { data: {} })
+      expect(res.status()).toBe(401)
+    })
+  }
+
+  test('paid integrations refuse signed-out callers', async ({ request }) => {
+    for (const endpoint of ['anthropic/chat-completion', 'speech/speech-to-text', 'speech/text-to-speech']) {
+      const res = await request.post(`/api/integrations/${endpoint}`, { data: {} })
+      expect(res.status(), endpoint).toBe(401)
+    }
+  })
 })

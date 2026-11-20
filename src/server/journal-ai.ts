@@ -1,0 +1,250 @@
+/**
+ * Prompts and model calls for Hearth. Transport-agnostic: callers pass a
+ * `complete` function, so the same code runs from a server action
+ * (`tools.integration`) and from cron (`ctx.integrations.call`).
+ */
+
+import { HABIT_SIGNALS, POSITIVES, STRESSORS, normalizeSignals, type DaySignals } from '../lib/signals'
+import type { Pattern, RangeStats } from '../lib/patterns'
+
+export const ENTRY_MODEL = 'claude-haiku-5-5'
+export const INSIGHT_MODEL = 'claude-sonnet-5-5'
+
+export interface CompletionRequest {
+  model: string
+  system: string
+  user: string
+  maxTokens: number
+}
+
+/** Returns the model's text, or throws with a message safe to log. */
+export type Complete = (req: CompletionRequest) => Promise<string>
+
+/** Body for the `anthropic/chat-completion` integration. */
+export function anthropicBody(req: CompletionRequest) {
+  return {
+    model: req.model,
+    max_tokens: req.maxTokens,
+    system: req.system,
+    messages: [{ role: 'user', content: req.user }],
+  }
+}
+
+/** Pull the text out of an Anthropic Messages response. */
+export function anthropicText(data: unknown): string {
+  const content = (data as { content?: { type: string; text?: string }[] } | null)?.content
+  const text = content?.find((c) => c.type === 'text')?.text
+  if (!text) throw new Error('Model returned no text')
+  return text
+}
+
+/** Models sometimes wrap JSON in prose or fences; take the outermost object. */
+export function parseJsonObject(text: string): Record<string, unknown> {
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start < 0 || end <= start) throw new Error('Model did not return JSON')
+  return JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>
+}
+
+// ── Safety ────────────────────────────────────────────────────────────────
+
+/**
+ * A deterministic backstop for the model's own risk flag: if either fires,
+ * the entry gets crisis resources instead of analysis. Over-triggering here
+ * costs a gentle message; under-triggering could cost much more.
+ */
+const RISK_PATTERNS = [
+  /\b(kill(ing)? myself|suicid(e|al)|end(ing)? (it all|my life)|want(ed)? to die|better off dead|self[- ]?harm|hurt(ing)? myself|cut(ting)? myself)\b/i,
+  /(不想活|自杀|轻生|想死|伤害自己|结束生命|割腕)/,
+]
+
+export function matchesRiskLanguage(text: string): boolean {
+  return RISK_PATTERNS.some((re) => re.test(text))
+}
+
+// ── Per-entry analysis ────────────────────────────────────────────────────
+
+export interface EntryAnalysis {
+  mood: number | null
+  moodTags: string[]
+  summary: string
+  reflection: string
+  riskFlag: boolean
+  signals: DaySignals
+}
+
+const ENTRY_SYSTEM = `You are Hearth, a warm, unhurried journaling companion. Someone has just shared a journal entry with you. You do two jobs at once:
+
+1. LISTEN. Write a short "reflection" (1–3 sentences) the way a caring friend who is a good listener would: name what they seem to feel, reflect back something specific they said, and leave room. Do not give advice, do not diagnose, do not use therapy jargon, do not be saccharine or use exclamation marks. Write in the same language as the entry.
+
+2. NOTICE. Extract structured signals so patterns can be found later. Only record what the entry states or clearly implies — use null when it is not mentioned. Never guess sleep hours or lunch timing.
+
+Safety: if the entry expresses thoughts of suicide, self-harm, or harming others, set "riskFlag": true and make the reflection gently acknowledge their pain and encourage reaching out to someone they trust or a crisis line. Otherwise false.
+
+Respond with ONLY a JSON object of this exact shape:
+{
+  "mood": 1-5 (1 very low, 3 neutral, 5 very good),
+  "moodTags": [1–3 short lowercase feeling words, same language as the entry],
+  "summary": "one sentence, under 20 words, third-person-free (e.g. 'Skipped lunch for meetings; foggy afternoon.')",
+  "reflection": "...",
+  "riskFlag": false,
+  "signals": {
+    "energyMorning": 1-5 | null,
+    "energyAfternoon": 1-5 | null,
+    "energyEvening": 1-5 | null,
+    "sleepHours": number | null,
+    "lunch": "on_time" | "late" | "skipped" | null,
+    "exercise": true | false | null,
+    "outdoors": true | false | null,
+    "social": true | false | null   (a meaningful interaction with someone, not just being around people),
+    "lateScreen": true | false | null  (on phone/screens late at night or in bed),
+    "stressors": [zero or more of: ${Object.keys(STRESSORS).join(', ')}],
+    "positives": [zero or more of: ${Object.keys(POSITIVES).join(', ')}],
+    "activities": [up to 6 short phrases of what they did, same language as the entry]
+  }
+}
+"on_time" lunch means roughly 11:30–13:30; "late" is after about 14:00.`
+
+export async function analyzeEntryText(complete: Complete, text: string): Promise<EntryAnalysis> {
+  const raw = await complete({
+    model: ENTRY_MODEL,
+    system: ENTRY_SYSTEM,
+    user: text.slice(0, 8000),
+    maxTokens: 900,
+  })
+  const json = parseJsonObject(raw)
+  const signals = normalizeSignals({ ...(json.signals as object), mood: json.mood })
+  const moodTags = Array.isArray(json.moodTags)
+    ? json.moodTags.filter((t): t is string => typeof t === 'string').slice(0, 3)
+    : []
+  return {
+    mood: signals.mood,
+    moodTags,
+    summary: typeof json.summary === 'string' ? json.summary.slice(0, 240) : '',
+    reflection: typeof json.reflection === 'string' ? json.reflection.slice(0, 600) : '',
+    riskFlag: json.riskFlag === true || matchesRiskLanguage(text),
+    signals,
+  }
+}
+
+// ── Insight over a range ──────────────────────────────────────────────────
+
+export const LAWS = ['obvious', 'attractive', 'easy', 'satisfying'] as const
+export type Law = (typeof LAWS)[number]
+
+export interface Suggestion {
+  title: string
+  law: Law
+  patternId: string | null
+  why: string
+  stack: string
+  twoMinute: string
+  signal: keyof typeof HABIT_SIGNALS | null
+}
+
+export interface InsightContent {
+  narrative: string
+  identity: string
+  highlights: { date: string; text: string }[]
+  patterns: (Pattern & { note?: string })[]
+  suggestions: Suggestion[]
+}
+
+export interface InsightInputDay {
+  date: string
+  mood: number | null
+  summary: string
+  activities: string[]
+  riskFlag: boolean
+}
+
+const INSIGHT_SYSTEM = `You are Hearth, a warm journaling companion writing someone's personal look-back over their recent days. You are given:
+- their day-by-day summaries,
+- statistics computed by code,
+- PATTERNS computed by code, each with an id, a statement containing the real numbers, a confidence level and the evidence dates.
+
+Rules:
+- Never invent numbers or patterns. Only reference the provided patterns by id. If there are none, say there is not enough yet and encourage them to keep writing.
+- Patterns are correlations from a handful of days, not causes. Hedge accordingly ("it looks like", "might"), more for "tentative" ones.
+- Write in second person, plain warm language, specific to their actual days. No therapy jargon, no exclamation marks, no toxic positivity.
+- Never quote or describe days marked "hard day (private)" beyond acknowledging the week had very hard moments.
+
+Suggestions follow James Clear's "Atomic Habits":
+- Each suggestion targets ONE provided pattern (patternId) and uses ONE of the four laws of behavior change: "obvious" (make the cue visible: implementation intentions, environment design), "attractive" (temptation bundling, join a culture), "easy" (reduce friction, the two-minute rule), "satisfying" (immediate reward, habit tracking, never miss twice).
+- "stack" is a habit-stacking sentence: "After I [an existing routine from their entries], I will [new habit]."
+- "twoMinute" is the version that takes under two minutes.
+- "signal" links the suggestion to a trackable habit signal if one fits, else null. Allowed: ${Object.keys(HABIT_SIGNALS).join(', ')}.
+- At most 3 suggestions, the most impactful first. Make them small and kind, never a lecture.
+
+The "identity" line is evidence-based identity reinforcement in the style of Atomic Habits: "This week you were someone who …" — pick something true and good from the data, even in a hard week.
+
+Respond with ONLY JSON:
+{
+  "narrative": "2 short paragraphs separated by \\n\\n: first what their days looked like (what they did), then how they felt and how it moved across the days",
+  "highlights": [{"date": "YYYY-MM-DD", "text": "a moment worth remembering, <15 words"}] (2–4 items),
+  "identity": "...",
+  "patternNotes": [{"id": "<pattern id>", "note": "one gentle sentence on what this might mean for them"}],
+  "suggestions": [{"title": "...", "law": "obvious|attractive|easy|satisfying", "patternId": "<id>", "why": "one sentence tying it to the pattern", "stack": "After I …, I will …", "twoMinute": "...", "signal": "<signal or null>"}]
+}
+Write in the language most of the summaries are written in.`
+
+export async function writeInsight(
+  complete: Complete,
+  input: { days: InsightInputDay[]; stats: RangeStats; patterns: Pattern[]; habits: string[] },
+): Promise<InsightContent> {
+  const payload = {
+    days: input.days.map((d) =>
+      d.riskFlag
+        ? { date: d.date, note: 'hard day (private)' }
+        : { date: d.date, mood: d.mood, summary: d.summary, activities: d.activities },
+    ),
+    stats: { ...input.stats, series: undefined },
+    patterns: input.patterns.map(({ id, statement, confidence, evidence }) => ({ id, statement, confidence, evidence })),
+    existingHabits: input.habits,
+  }
+  const raw = await complete({
+    model: INSIGHT_MODEL,
+    system: INSIGHT_SYSTEM,
+    user: JSON.stringify(payload),
+    maxTokens: 2000,
+  })
+  const json = parseJsonObject(raw)
+  const ids = new Set(input.patterns.map((p) => p.id))
+  const dates = new Set(input.days.filter((d) => !d.riskFlag).map((d) => d.date))
+
+  const notes = new Map<string, string>()
+  if (Array.isArray(json.patternNotes)) {
+    for (const n of json.patternNotes as { id?: unknown; note?: unknown }[]) {
+      if (typeof n.id === 'string' && typeof n.note === 'string' && ids.has(n.id)) notes.set(n.id, n.note)
+    }
+  }
+
+  const suggestions: Suggestion[] = Array.isArray(json.suggestions)
+    ? (json.suggestions as Record<string, unknown>[])
+        .filter((s) => typeof s.title === 'string' && LAWS.includes(s.law as Law))
+        .slice(0, 3)
+        .map((s) => ({
+          title: String(s.title),
+          law: s.law as Law,
+          // A suggestion pointing at a pattern we never computed is untethered; drop the link.
+          patternId: typeof s.patternId === 'string' && ids.has(s.patternId) ? s.patternId : null,
+          why: typeof s.why === 'string' ? s.why : '',
+          stack: typeof s.stack === 'string' ? s.stack : '',
+          twoMinute: typeof s.twoMinute === 'string' ? s.twoMinute : '',
+          signal: typeof s.signal === 'string' && s.signal in HABIT_SIGNALS ? (s.signal as Suggestion['signal']) : null,
+        }))
+    : []
+
+  return {
+    narrative: typeof json.narrative === 'string' ? json.narrative : '',
+    identity: typeof json.identity === 'string' ? json.identity : '',
+    highlights: Array.isArray(json.highlights)
+      ? (json.highlights as { date?: unknown; text?: unknown }[])
+          .filter((h) => typeof h.date === 'string' && dates.has(h.date) && typeof h.text === 'string')
+          .slice(0, 4)
+          .map((h) => ({ date: h.date as string, text: h.text as string }))
+      : [],
+    patterns: input.patterns.map((p) => ({ ...p, note: notes.get(p.id) })),
+    suggestions,
+  }
+}
