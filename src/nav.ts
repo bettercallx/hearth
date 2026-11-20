@@ -20,7 +20,8 @@ export const nav: NavItem[] = [
   { path: '/journal', label: 'Journal' },
   { path: '/insights', label: 'Looking back' },
   { path: '/habits', label: 'Habits' },
-  { path: '/settings', label: 'Settings' },
+  { path: '/exchange', label: 'Exchange' },
+  // Settings lives in the account menu to keep the bar short.
   // The /api-status debug page still exists — add
   // `{ path: '/api-status', label: 'API Status', devOnly: true }` to surface it.
   // ── Features add nav items below this line ──

@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { LifeBuoy, Mic, Volume2, Loader2, Trash2 } from 'lucide-react'
+import { LifeBuoy, Lock, Mic, Users, Volume2, Loader2, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { callAction, formatDay, speak } from '@/lib/client'
 import type { Entry } from '@/lib/types'
-import { useMutations } from 'deepspace'
+import { useMutations, useQuery, useUserLookup } from 'deepspace'
+import { joinNames, useFriends } from '@/lib/social'
 import { ConfirmModal, useToast } from '@/components/ui'
 
 /** Cool dusk for low days, warming to sunlight for good ones (theme tokens). */
@@ -104,8 +105,12 @@ export function EntryCard({
   const [open, setOpen] = useState(false)
   const [retrying, setRetrying] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const { removeConfirmed, ready } = useMutations<Entry>('entries')
+  const { removeConfirmed, put, ready } = useMutations<Entry>('entries')
   const { error } = useToast()
+  const { friends } = useFriends()
+  const sharedWith = entry.sharedWith ?? []
+  const sharedFriends = friends.filter((f) => sharedWith.includes(f.id))
+  const canShare = friends.length > 0 && !entry.riskFlag
   const stuck = entry.status === 'failed' || (entry.status === 'pending' && Date.now() - Date.parse(createdAt) > STUCK_MS)
   const retry = async () => {
     setRetrying(true)
@@ -126,7 +131,14 @@ export function EntryCard({
         <div className="flex flex-wrap gap-1.5">
           {entry.moodTags?.map((t) => <Tag key={t}>{t}</Tag>)}
         </div>
-        {entry.isDemo && <span className="ml-auto text-[11px] uppercase tracking-wider text-muted-foreground/70">demo</span>}
+        <div className="ml-auto flex items-center gap-3">
+          {sharedFriends.length > 0 && (
+            <span data-testid="shared-badge" className="inline-flex items-center gap-1 text-[11px] text-muted-foreground" title="Shared in your exchange diary">
+              <Users className="h-3 w-3" aria-hidden /> {joinNames(sharedFriends)}
+            </span>
+          )}
+          {entry.isDemo && <span className="text-[11px] uppercase tracking-wider text-muted-foreground/70">demo</span>}
+        </div>
       </header>
 
       {stuck ? (
@@ -164,6 +176,18 @@ export function EntryCard({
         >
           {open ? 'Hide entry' : 'Read entry'}
         </button>
+        {open && canShare && (
+          <button
+            type="button"
+            data-testid="toggle-share"
+            disabled={!ready}
+            onClick={() => void put(id, { sharedWith: sharedFriends.length ? [] : friends.map((f) => f.id) })}
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+          >
+            {sharedFriends.length ? <Lock className="h-3 w-3" aria-hidden /> : <Users className="h-3 w-3" aria-hidden />}
+            {sharedFriends.length ? 'Make private' : `Share with ${joinNames(friends)}`}
+          </button>
+        )}
         {open && (
           <button
             type="button"
@@ -176,6 +200,7 @@ export function EntryCard({
           </button>
         )}
       </div>
+      <Replies entryId={id} />
       <ConfirmModal
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
@@ -197,5 +222,25 @@ export function EntryCard({
         </div>
       )}
     </article>
+  )
+}
+
+export type Reply = { userId?: string; entryId: string; text?: string; emoji?: string; participants: string[] }
+
+/** Friends' replies and reactions on an entry, live. Renders nothing when there are none. */
+export function Replies({ entryId, className }: { entryId: string; className?: string }) {
+  const { records } = useQuery<Reply>('replies', { where: { entryId }, orderBy: 'createdAt', orderDir: 'asc' })
+  const { getName } = useUserLookup()
+  if (!records.length) return null
+  return (
+    <ul data-testid="replies" className={cn('mt-4 space-y-2 border-t border-border pt-3', className)}>
+      {records.map((r) => (
+        <li key={r.recordId} className="flex items-baseline gap-2 text-sm">
+          <span className="shrink-0 font-medium text-foreground">{(getName(r.data.userId ?? '') ?? 'Friend').split(' ')[0]}</span>
+          {r.data.emoji && <span aria-label="reaction">{r.data.emoji}</span>}
+          {r.data.text && <span className="text-muted-foreground">{r.data.text}</span>}
+        </li>
+      ))}
+    </ul>
   )
 }

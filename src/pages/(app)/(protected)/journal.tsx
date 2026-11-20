@@ -1,16 +1,15 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from 'deepspace'
 import { BookOpen } from 'lucide-react'
 import { EmptyState } from '@/components/ui'
 import { EntryCard, moodColor, moodWord } from '@/components/hearth/bits'
 import { addDays } from '@/lib/patterns'
 import { formatDay, localToday } from '@/lib/client'
-import type { Entry } from '@/lib/types'
+import { useMyEntries } from '@/lib/social'
 
 export default function JournalPage() {
   const navigate = useNavigate()
-  const { records, status } = useQuery<Entry>('entries', { orderBy: 'createdAt', orderDir: 'desc', limit: 500 })
+  const { records, status } = useMyEntries({ orderBy: 'createdAt', orderDir: 'desc', limit: 500 })
 
   const groups = useMemo(() => {
     const byDate = new Map<string, typeof records>()

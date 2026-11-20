@@ -18,8 +18,9 @@ import {
 import { addDays, habitProgress, type DayPoint, type HabitProgress } from '@/lib/patterns'
 import { HABIT_SIGNALS, normalizeSignals, type HabitSignal } from '@/lib/signals'
 import { formatDay, localToday } from '@/lib/client'
-import type { Entry, Habit } from '@/lib/types'
+import type { Habit } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { useMyEntries } from '@/lib/social'
 
 const WINDOW = 14
 
@@ -27,7 +28,7 @@ export default function HabitsPage() {
   const today = localToday()
   const start = addDays(today, -(WINDOW - 1))
   const { records: habits, status } = useQuery<Habit>('habits', { orderBy: 'createdAt', orderDir: 'asc' })
-  const { records: entries } = useQuery<Entry>('entries', { limit: 500 })
+  const { records: entries } = useMyEntries({ limit: 500 })
   const [creating, setCreating] = useState(false)
 
   const points: DayPoint[] = useMemo(

@@ -3,16 +3,16 @@
  */
 
 import { useState } from 'react'
-import { signOut, useCronMonitor, useQuery, useUser } from 'deepspace'
+import { signOut, useCronMonitor, useUser } from 'deepspace'
 import { Lock } from 'lucide-react'
 import { Button, ConfirmModal, useToast } from '@/components/ui'
 import { callAction, localToday } from '@/lib/client'
-import type { Entry } from '@/lib/types'
 import { SCOPE_ID } from '@/constants'
+import { useMyEntries } from '@/lib/social'
 
 export default function SettingsPage() {
   const { user } = useUser()
-  const { records } = useQuery<Entry>('entries', { limit: 500 })
+  const { records } = useMyEntries({ limit: 500 })
   const demoCount = records.filter((r) => r.data.isDemo).length
   const [busy, setBusy] = useState(false)
   const [confirming, setConfirming] = useState(false)

@@ -2,14 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AuthOverlay, useAuth, useMutations, useQuery } from 'deepspace'
-import { Mic, Square, ArrowRight } from 'lucide-react'
+import { AuthOverlay, useAuth, useMutations } from 'deepspace'
+import { Mic, Square, ArrowRight, Users, Lock } from 'lucide-react'
 import { Button, Textarea, useToast } from '@/components/ui'
 import { VoiceWave } from '@/components/hearth/VoiceWave'
 import { CrisisCard, EntryCard, SpeakButton, Tag } from '@/components/hearth/bits'
 import { callAction, formatDay, localToday, transcribe } from '@/lib/client'
 import { useRecorder } from '@/lib/useRecorder'
 import type { Entry } from '@/lib/types'
+import { joinNames, useFriends, useMyEntries } from '@/lib/social'
 
 const PROMPTS = [
   'What stayed with you today?',
@@ -19,6 +20,17 @@ const PROMPTS = [
   'What would you like to let go of tonight?',
 ]
 
+/** The share toggle remembers your last choice, so sharing is one decision, not one per entry. */
+const SHARE_KEY = 'hearth.shareWithFriends'
+
+function readShare() {
+  try {
+    return localStorage.getItem(SHARE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 /** Ruled-paper lines behind the editor, spaced to match its 2rem line height. */
 const RULED =
   'bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_calc(2rem-1px),var(--color-border)_calc(2rem-1px),var(--color-border)_2rem)] bg-local leading-8'
@@ -26,7 +38,11 @@ const RULED =
 function DateLine() {
   return (
     <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-      {formatDay(localToday(), { weekday: 'long', month: 'long', day: 'numeric' })}
+      {formatDay(localToday(), {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+      })}
     </p>
   )
 }
@@ -41,11 +57,13 @@ function SignedOutPreview() {
   return (
     <div className="mx-auto max-w-2xl px-6 pb-20 pt-16 sm:pt-24">
       <DateLine />
-      <h1 className="mt-4 font-display text-4xl font-light leading-tight text-foreground sm:text-5xl">How was today?</h1>
+      <h1 className="mt-4 font-display text-4xl font-light leading-tight text-foreground sm:text-5xl">
+        How was today?
+      </h1>
       <VoiceWave levels={[]} active={false} className="mt-8" />
       <p className="mt-6 max-w-lg leading-relaxed text-muted-foreground">
-        Talk or write for a minute. Hearth listens, reflects back what it heard, and over a week or two helps you see what
-        lifts you and what wears you down.
+        Talk or write for a minute. Hearth listens, reflects back what it heard, and over a week or two helps you see
+        what lifts you and what wears you down.
       </p>
       <div className="mt-8 flex flex-wrap items-center gap-4">
         <Button size="lg" className="rounded-full px-6" onClick={() => setShowAuth(true)} data-testid="home-sign-in">
@@ -62,11 +80,26 @@ type Phase = 'compose' | 'recording' | 'transcribing' | 'saving' | 'thinking'
 
 function Companion() {
   const today = localToday()
-  const { records: todays } = useQuery<Entry>('entries', { where: { entryDate: today }, orderBy: 'createdAt', orderDir: 'desc' })
-  const { records: anyEntries, status: anyStatus } = useQuery<Entry>('entries', { limit: 1 })
+  const { records: todays } = useMyEntries({
+    where: { entryDate: today },
+    orderBy: 'createdAt',
+    orderDir: 'desc',
+  })
+  const { records: anyEntries, status: anyStatus } = useMyEntries({ limit: 1 })
   const { ready, createConfirmed } = useMutations<Entry>('entries')
   const { error, success } = useToast()
   const recorder = useRecorder()
+  const { friends } = useFriends()
+  const [share, setShareState] = useState(readShare)
+  const setShare = (on: boolean) => {
+    setShareState(on)
+    try {
+      localStorage.setItem(SHARE_KEY, on ? '1' : '0')
+    } catch {
+      // Storage blocked (private mode): the toggle still works for this visit.
+    }
+  }
+  const sharing = share && friends.length > 0
 
   const [phase, setPhase] = useState<Phase>('compose')
   const [text, setText] = useState('')
@@ -120,7 +153,13 @@ function Companion() {
     if (!body) return
     setPhase('saving')
     try {
-      const id = await createConfirmed({ text: body, entryDate: today, source, status: 'pending' })
+      const id = await createConfirmed({
+        text: body,
+        entryDate: today,
+        source,
+        status: 'pending',
+        sharedWith: sharing ? friends.map((f) => f.id) : [],
+      })
       setLatestId(id)
       setText('')
       setTyping(false)
@@ -184,15 +223,23 @@ function Companion() {
               <CrisisCard />
             </>
           ) : latest.data.status === 'failed' ? (
-            <p className="text-muted-foreground">Your words are saved. I couldn't reflect on them just now; they still count.</p>
+            <p className="text-muted-foreground">
+              Your words are saved. I couldn't reflect on them just now; they still count.
+            </p>
           ) : (
             <div className="border-l-2 border-primary pl-5">
-              <p className="font-display text-xl font-light leading-relaxed text-foreground sm:text-2xl">{latest.data.reflection}</p>
+              <p className="font-display text-xl font-light leading-relaxed text-foreground sm:text-2xl">
+                {latest.data.reflection}
+              </p>
               <div className="mt-4 flex flex-wrap items-center gap-2">
-                {latest.data.moodTags?.map((t) => <Tag key={t}>{t}</Tag>)}
+                {latest.data.moodTags?.map((t) => (
+                  <Tag key={t}>{t}</Tag>
+                ))}
                 {latest.data.reflection && <SpeakButton text={latest.data.reflection} />}
               </div>
-              {latest.data.summary && <p className="mt-3 text-sm text-muted-foreground">Noted: {latest.data.summary}</p>}
+              {latest.data.summary && (
+                <p className="mt-3 text-sm text-muted-foreground">Noted: {latest.data.summary}</p>
+              )}
             </div>
           )}
         </section>
@@ -227,21 +274,48 @@ function Companion() {
                   <Mic className="h-4 w-4" aria-hidden /> Add by voice
                 </Button>
               )}
-              <Button
-                data-testid="save-entry"
-                className="rounded-full px-5"
-                onClick={() => void save()}
-                disabled={!ready || !text.trim() || phase !== 'compose'}
-                loading={phase === 'saving'}
-              >
-                Share with Hearth
-              </Button>
+              <div className="flex items-center gap-2">
+                {friends.length > 0 && (
+                  <button
+                    type="button"
+                    data-testid="share-toggle"
+                    aria-pressed={sharing}
+                    onClick={() => setShare(!share)}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                      sharing
+                        ? 'border-primary/40 bg-primary/10 text-primary'
+                        : 'border-border text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {sharing ? (
+                      <Users className="h-3.5 w-3.5" aria-hidden />
+                    ) : (
+                      <Lock className="h-3.5 w-3.5" aria-hidden />
+                    )}
+                    {sharing ? `Also shared with ${joinNames(friends)}` : 'Just for me'}
+                  </button>
+                )}
+                <Button
+                  data-testid="save-entry"
+                  className="rounded-full px-5"
+                  onClick={() => void save()}
+                  disabled={!ready || !text.trim() || phase !== 'compose'}
+                  loading={phase === 'saving'}
+                >
+                  Share with Hearth
+                </Button>
+              </div>
             </div>
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-5">
             {phase === 'recording' ? (
-              <Button size="lg" className="rounded-full px-6" onClick={() => void stopRecording()} aria-label="Stop recording">
+              <Button
+                size="lg"
+                className="rounded-full px-6"
+                onClick={() => void stopRecording()}
+                aria-label="Stop recording"
+              >
                 <Square className="h-4 w-4" aria-hidden /> Done · {clock}
               </Button>
             ) : (
@@ -282,7 +356,14 @@ function Companion() {
             Patterns need a week or two of entries. Want to see what Hearth notices first? Load ten days of a sample
             journal; you can remove it any time in Settings.
           </p>
-          <Button variant="secondary" size="sm" className="mt-3 rounded-full" onClick={() => void seed()} loading={seeding} data-testid="seed-demo">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="mt-3 rounded-full"
+            onClick={() => void seed()}
+            loading={seeding}
+            data-testid="seed-demo"
+          >
             Load a sample journal
           </Button>
         </div>
@@ -292,7 +373,10 @@ function Companion() {
         <section className="mt-16 space-y-3 border-t border-border pt-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Earlier today</h2>
-            <Link to="/journal" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+            <Link
+              to="/journal"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
               Whole journal <ArrowRight className="h-3 w-3" aria-hidden />
             </Link>
           </div>

@@ -18,10 +18,16 @@ type Page = import('@playwright/test').Page
 const created = new Map<Page, string[]>()
 
 /** Type an entry on /home, submit it, and return its record id. */
-async function writeEntry(page: Page, text: string): Promise<string> {
+async function writeEntry(page: Page, text: string, opts: { share?: boolean } = {}): Promise<string> {
   await page.goto('/home')
   await page.getByTestId('type-instead').click()
   await page.getByTestId('entry-input').fill(text)
+  if (opts.share !== undefined) {
+    const toggle = page.getByTestId('share-toggle')
+    await expect(toggle).toBeVisible({ timeout: 15_000 })
+    if ((await toggle.getAttribute('aria-pressed')) !== String(opts.share)) await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', String(opts.share))
+  }
   const call = page.waitForRequest((r) => r.url().endsWith('/api/actions/analyzeEntry'))
   await page.getByTestId('save-entry').click()
   const id = (JSON.parse((await call).postData() ?? '{}') as { entryId: string }).entryId
@@ -117,11 +123,21 @@ test('look-back writes a narrative and Atomic Habits suggestions tied to pattern
   const page = alice.page
   await page.goto('/insights')
   await page.getByRole('radio', { name: '14 days' }).click()
+  // Wait for THIS request to succeed — an older look-back on screen proves nothing.
+  const response = page.waitForResponse((r) => r.url().endsWith('/api/actions/generateInsight'), { timeout: 90_000 })
   await page.getByTestId('generate-insight').click()
-  const insight = page.getByTestId('insight')
-  await expect(insight).toContainText('14-day look-back', { timeout: 90_000 })
-  await expect(insight.getByTestId('suggestion').first()).toBeVisible()
+  const body = (await (await response).json()) as { success: boolean; error?: string; data?: { insightId: string } }
+  expect(body.error).toBeUndefined()
+  expect(body.success).toBe(true)
+
+  const insight = page.locator(`[data-testid="insight"][data-insight-id="${body.data!.insightId}"]`)
+  await expect(insight).toContainText('14-day look-back', { timeout: 15_000 })
   await expect(insight.getByTestId('suggestion').first()).toContainText(/Make it (obvious|attractive|easy|satisfying)/)
+
+  // Clean up so repeated runs don't hit the per-day look-back cap.
+  await insight.getByTestId('delete-insight').click()
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  await expect(insight).toHaveCount(0)
 })
 
 test("privacy: Bob can neither see nor act on Alice's entries", async ({ users }) => {
@@ -151,4 +167,65 @@ test("privacy: Bob can neither see nor act on Alice's entries", async ({ users }
   await writeEntry(bob.page, `__test-${Date.now()}__ bob probe`)
   await expect.poll(() => forged, { timeout: 30_000 }).not.toBeNull()
   expect(forged).toMatchObject({ success: false, error: 'Entry not found' })
+})
+
+test('exchange diary: pair by link, share selectively, reply live, unpair revokes', async ({ users }) => {
+  const [alice, bob] = await users(['Alice', 'Bob'])
+
+  // Alice creates an invite link; Bob opens it and accepts.
+  await alice.page.goto('/exchange')
+  const invite = alice.page.getByTestId('invite-link')
+  const create = alice.page.getByTestId('create-invite')
+  await expect(invite.or(create)).toBeVisible({ timeout: 20_000 })
+  if (await create.isVisible()) await create.click()
+  const link = await invite.inputValue()
+  const code = new URL(link).searchParams.get('invite')
+  expect(code).toBeTruthy()
+
+  await bob.page.goto(`/exchange?invite=${code}`)
+  await bob.page.getByTestId('accept-invite').getByRole('button', { name: 'Accept' }).click()
+  await expect(bob.page.getByTestId('friend-name')).toContainText('Alice', { timeout: 15_000 })
+  await expect(alice.page.getByTestId('friend-name')).toContainText('Bob', { timeout: 15_000 })
+
+  // One shared entry, one private one. The toggle is sticky, so set it each time.
+  const sharedMarker = `__test-${Date.now()}__ shared-with-bob`
+  const privateMarker = `__test-${Date.now()}__ alice-only`
+  const sharedId = await writeEntry(alice.page, `${sharedMarker} Long day, but dinner with my sister helped.`, { share: true })
+  await expect(alice.page.getByTestId('reflection')).toBeVisible({ timeout: 60_000 })
+  await writeEntry(alice.page, `${privateMarker} Something I am not ready to talk about.`, { share: false })
+  await expect(alice.page.getByTestId('reflection')).toBeVisible({ timeout: 60_000 })
+
+  // Bob sees exactly the shared one, arriving over the socket.
+  await bob.page.goto('/exchange')
+  const card = bob.page.locator(`[data-testid="shared-entry"][data-entry-id="${sharedId}"]`)
+  await expect(card).toContainText(sharedMarker, { timeout: 20_000 })
+  await expect(bob.page.getByText(privateMarker)).toHaveCount(0)
+  // …and none of it leaks into Bob's own journal.
+  await card.getByRole('button', { name: 'React with 🤗' }).click()
+  await card.getByTestId('reply-input').fill('Glad dinner helped')
+  await card.getByRole('button', { name: 'Send reply' }).click()
+  await expect(card.getByTestId('replies')).toContainText('Glad dinner helped')
+
+  // Alice sees Bob's reply on her own entry, live.
+  await alice.page.goto('/journal')
+  const own = alice.page.locator(`[data-testid="entry-card"][data-entry-id="${sharedId}"]`)
+  await expect(own.getByTestId('shared-badge')).toContainText('Bob', { timeout: 15_000 })
+  await expect(own.getByTestId('replies')).toContainText('🤗')
+  await expect(own.getByTestId('replies')).toContainText('Glad dinner helped')
+
+  await bob.page.goto('/journal')
+  await expect(bob.page.getByRole('heading', { name: 'Your journal' })).toBeVisible()
+  await bob.page.waitForTimeout(1500)
+  await expect(bob.page.getByText(sharedMarker)).toHaveCount(0)
+
+  // Bob unpairs: the shared entry disappears for him, and Alice still owns it, now private.
+  await bob.page.goto('/exchange')
+  await bob.page.getByRole('button', { name: 'Unpair' }).first().click()
+  await bob.page.getByRole('button', { name: 'Unpair', exact: true }).last().click()
+  await expect(bob.page.getByTestId('friend-name')).toHaveCount(0, { timeout: 15_000 })
+  await expect(bob.page.getByText(sharedMarker)).toHaveCount(0, { timeout: 15_000 })
+
+  await alice.page.goto('/journal')
+  await expect(own).toBeVisible({ timeout: 15_000 })
+  await expect(own.getByTestId('shared-badge')).toHaveCount(0)
 })

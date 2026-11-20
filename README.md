@@ -13,8 +13,9 @@ Built on the [DeepSpace SDK](https://docs.deep.space).
 | --- | --- |
 | **Today** (`/home`) | Listening orb + mic (or type). Each entry gets a short reflection, mood tags, a summary, and an optional spoken reply. Crisis language shows 988 / findahelpline resources instead of analysis. |
 | **Journal** | Every entry, newest first, with a two-week mood strip. Delete any entry. |
-| **Looking back** | Stats, mood/energy chart, and **patterns** over 7/10/14 days, each with its numbers, a confidence level, and links to the supporting days. "Write my look-back" asks Claude for a narrative, an identity line, highlights, and up to three Atomic Habits suggestions tied to specific patterns. A weekly look-back also arrives by cron every Sunday. |
+| **Looking back** | Opens on a **month calendar**, each day colored by mood (contribution-graph style; tap a day for its summary). Below: a mood/energy chart and **patterns** over 7/10/14 days, each with its numbers, a confidence level, and links to the supporting days. "Write my look-back" asks Claude for a narrative, an identity line, highlights, and up to three Atomic Habits suggestions tied to specific patterns. A weekly look-back also arrives by cron every Sunday. |
 | **Habits** | Identity, habit stack, two-minute version, and a signal Hearth listens for (lunch on time, 7h sleep, moved, outside, connected, screens down). Tracked automatically from entries; streaks and "never miss twice". |
+| **Exchange** | An exchange diary with a friend, paired by a one-time invite link. One journal, no double writing: a sticky "also shared with …" switch next to Save decides per entry, and entries can be shared or made private later. Friends reply with a line or a reaction, live. Unpairing revokes everything both ways. Crisis-flagged entries are never shared. |
 
 ## How the analysis works
 
@@ -37,7 +38,10 @@ Built on the [DeepSpace SDK](https://docs.deep.space).
 ## Privacy
 
 `entries`, `insights` and `habits` are owner-only for every role **including
-admin** (`src/schemas/journal-schema.ts`). Server actions run RBAC-off, so each
+admin** (`src/schemas/journal-schema.ts`). The one exception is an entry the
+owner shares: `sharedWith` is a server-enforced collaborator list, so a friend
+receives exactly those rows over the socket and nothing else. Replies are
+visible only to their author and the entry's owner. Server actions run RBAC-off, so each
 one checks the caller owns the record it touches. Cron writes are scoped per user.
 Risk-flagged entries are never quoted to the look-back model.
 

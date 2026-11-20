@@ -15,6 +15,8 @@ export type Entry = {
   signals?: DaySignals
   riskFlag?: boolean
   isDemo?: boolean
+  /** Friends this entry is shared with in the exchange diary; empty = private. */
+  sharedWith?: string[]
 }
 
 export type Insight = {

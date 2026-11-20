@@ -2,15 +2,16 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutations, useQuery } from 'deepspace'
 import { Sparkles, Plus, Check, Info } from 'lucide-react'
-import { Button, buttonVariants, useToast } from '@/components/ui'
+import { Button, ConfirmModal, buttonVariants, useToast } from '@/components/ui'
 import { MoodChart } from '@/components/hearth/MoodChart'
 import { MonthCalendar } from '@/components/hearth/MonthCalendar'
 import { callAction, formatDay, localToday } from '@/lib/client'
 import { addDays, computeStats, findPatterns, type Confidence, type DayPoint, type Pattern } from '@/lib/patterns'
 import { normalizeSignals } from '@/lib/signals'
-import type { Entry, Habit, Insight } from '@/lib/types'
+import type { Habit, Insight } from '@/lib/types'
 import type { Suggestion } from '@/server/journal-ai'
 import { cn } from '@/lib/utils'
+import { useMyEntries } from '@/lib/social'
 
 const RANGES = [7, 10, 14] as const
 
@@ -33,7 +34,7 @@ export default function InsightsPage() {
   const [generating, setGenerating] = useState(false)
   const { error, success } = useToast()
 
-  const { records: entries, status } = useQuery<Entry>('entries', { orderBy: 'createdAt', orderDir: 'asc', limit: 500 })
+  const { records: entries, status } = useMyEntries({ orderBy: 'createdAt', orderDir: 'asc', limit: 500 })
   const { records: insights } = useQuery<Insight>('insights', { orderBy: 'createdAt', orderDir: 'desc', limit: 20 })
 
   const start = addDays(today, -(days - 1))
@@ -155,7 +156,7 @@ export default function InsightsPage() {
               A new one also arrives every Sunday evening, covering your week.
             </p>
             {latest ? (
-              <InsightView insight={latest.data} />
+              <InsightView id={latest.recordId} insight={latest.data} />
             ) : (
               <p className="mt-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">
                 {stats.daysLogged < 3
@@ -196,9 +197,11 @@ function PatternCard({ pattern, note }: { pattern: Pattern; note?: string }) {
   )
 }
 
-function InsightView({ insight }: { insight: Insight }) {
+function InsightView({ id, insight }: { id: string; insight: Insight }) {
   const { records: habits } = useQuery<Habit>('habits')
   const { ready, createConfirmed } = useMutations<Habit>('habits')
+  const { removeConfirmed } = useMutations<Insight>('insights')
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const { success, error } = useToast()
   const adopted = new Set(habits.map((h) => h.data.name))
 
@@ -219,10 +222,33 @@ function InsightView({ insight }: { insight: Insight }) {
   }
 
   return (
-    <div data-testid="insight" className="mt-5 space-y-6">
-      <p className="text-xs text-muted-foreground">
-        {insight.trigger === 'weekly' ? 'Weekly' : `${insight.days}-day`} look-back · {formatDay(insight.rangeStart)} – {formatDay(insight.rangeEnd)}
-      </p>
+    <div data-testid="insight" data-insight-id={id} className="mt-5 space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">
+          {insight.trigger === 'weekly' ? 'Weekly' : `${insight.days}-day`} look-back · {formatDay(insight.rangeStart)} –{' '}
+          {formatDay(insight.rangeEnd)}
+        </p>
+        <button
+          type="button"
+          data-testid="delete-insight"
+          onClick={() => setConfirmDelete(true)}
+          className="text-xs text-muted-foreground underline-offset-4 hover:text-destructive hover:underline"
+        >
+          Delete
+        </button>
+      </div>
+      <ConfirmModal
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={() => {
+          setConfirmDelete(false)
+          removeConfirmed(id).catch((e: unknown) => error('Could not delete', e instanceof Error ? e.message : undefined))
+        }}
+        title="Delete this look-back?"
+        description="Your entries stay. You can write a new look-back any time."
+        confirmText="Delete"
+        variant="destructive"
+      />
       <div className="space-y-4">
         {insight.narrative.split(/\n\n+/).map((para, i) => (
           <p key={i} className="text-[15px] leading-relaxed text-foreground/90">

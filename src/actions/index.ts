@@ -33,6 +33,7 @@ export function completeVia(tools: ActionTools): Complete {
 interface EntryData extends EntryRow {
   text: string
   isDemo?: boolean | number
+  sharedWith?: string[]
 }
 
 async function ownEntries(tools: ActionTools, userId: string) {
@@ -62,6 +63,8 @@ const analyzeEntry: ActionHandler<Env> = async ({ userId, params, tools }) => {
       reflection: a.reflection,
       riskFlag: a.riskFlag,
       signals: a.signals,
+      // A crisis entry is never shared, whatever the composer toggle said.
+      ...(a.riskFlag ? { sharedWith: [] } : {}),
     })
     if (!updated.success) return updated
     return { success: true, data: { status: 'analyzed', riskFlag: a.riskFlag } }
@@ -138,6 +141,7 @@ const seedDemo: ActionHandler<Env> = async ({ userId, params, tools }) => {
       signals: e.signals,
       riskFlag: false,
       isDemo: true,
+      sharedWith: [],
     })
     if (r.success) created++
   }
@@ -151,9 +155,65 @@ const clearDemo: ActionHandler<Env> = async ({ userId, tools }) => {
   return { success: true, data: { removed: demo.length } }
 }
 
+// ── Exchange diary ─────────────────────────────────────────────────────────
+
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
+interface FriendshipData extends Record<string, unknown> {
+  members: string[]
+}
+
+async function friendshipsOf(tools: ActionTools, userId: string) {
+  const r = await tools.query<FriendshipData>('friendships', { limit: 1000 })
+  if (!r.success) throw new Error(r.error)
+  return r.data.records.filter((f) => Array.isArray(f.data.members) && f.data.members.includes(userId))
+}
+
+const acceptInvite: ActionHandler<Env> = async ({ userId, params, tools }) => {
+  const code = typeof params.code === 'string' ? params.code.trim() : ''
+  if (!/^[A-Za-z0-9]{8,32}$/.test(code)) return { success: false, error: 'That invite link is not valid.' }
+
+  const found = await tools.query<{ code: string; userId: string; status: string }>('invites', { where: { code }, limit: 1 })
+  const invite = found.success ? found.data.records[0] : undefined
+  if (!invite || invite.data.status !== 'open' || Date.now() - Date.parse(invite.createdAt) > INVITE_TTL_MS) {
+    return { success: false, error: 'This invite has expired or was already used. Ask for a new link.' }
+  }
+  const inviter = invite.data.userId
+  if (inviter === userId) return { success: false, error: "That's your own invite. Send it to a friend." }
+
+  const existing = await friendshipsOf(tools, userId)
+  if (!existing.some((f) => f.data.members.includes(inviter))) {
+    const created = await tools.create('friendships', { members: [inviter, userId] })
+    if (!created.success) return created
+  }
+  await tools.update('invites', invite.recordId, { status: 'used' })
+  return { success: true, data: { friendId: inviter } }
+}
+
+/** End a pairing, and take back everything each side had shared with the other. */
+const unpair: ActionHandler<Env> = async ({ userId, params, tools }) => {
+  const friendId = typeof params.friendId === 'string' ? params.friendId : ''
+  const pairs = (await friendshipsOf(tools, userId)).filter((f) => f.data.members.includes(friendId))
+  if (!pairs.length) return { success: false, error: 'Not paired with this person.' }
+
+  for (const [owner, other] of [
+    [userId, friendId],
+    [friendId, userId],
+  ]) {
+    for (const e of await ownEntries(tools, owner)) {
+      const shared = Array.isArray(e.data.sharedWith) ? e.data.sharedWith : []
+      if (shared.includes(other)) await tools.update('entries', e.recordId, { sharedWith: shared.filter((id) => id !== other) })
+    }
+  }
+  for (const f of pairs) await tools.remove('friendships', f.recordId)
+  return { success: true, data: { unpaired: friendId } }
+}
+
 export const actions: Record<string, ActionHandler<Env>> = {
   analyzeEntry,
   generateInsight,
   seedDemo,
   clearDemo,
+  acceptInvite,
+  unpair,
 }
