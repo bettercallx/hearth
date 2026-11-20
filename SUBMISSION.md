@@ -67,6 +67,7 @@ users' journals, even though that makes support and debugging harder.
 - [ ] Loaded the sample journal. The patterns match what I'd expect from reading the entries.
 - [ ] Generated a look-back. The suggestions point at real patterns and dates.
 - [ ] Signed in as a second account and confirmed I can't see the first account's entries.
+- [ ] Paired two accounts by invite link, shared one entry and kept one private; the friend saw only the shared one, and my entry showed their reply.
 - [ ] Ran `npx deepspace test run all` and `npm run test:unit` locally: all green.
 - [ ] On the deployed app, used Settings → "Run now" for the weekly job and checked `npx deepspace logs --search cron`.
 - [ ] Read the prompts in `src/server/journal-ai.ts` and the thresholds in `src/lib/patterns.ts`.
