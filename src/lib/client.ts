@@ -82,20 +82,6 @@ export async function transcribe(audio: Blob): Promise<string> {
   return (r.data?.text ?? '').trim()
 }
 
-/** Longest reflection we will voice — keeps a runaway string from costing much. */
-const MAX_SPOKEN_CHARS = 600
-
-export async function speak(text: string): Promise<string> {
-  const r = await integration.post<{ audioUrl: string }>('speech/text-to-speech', {
-    input: text.slice(0, MAX_SPOKEN_CHARS),
-    model: 'gpt-4o-mini-tts',
-    voice: 'sage',
-    instructions: 'Speak softly and slowly, like a caring friend listening late at night. Warm, unhurried, never cheerful or salesy.',
-  })
-  if (!r.success || !r.data?.audioUrl) throw new Error(r.success ? 'No audio returned' : r.error)
-  return r.data.audioUrl
-}
-
 /** Longest edge for an uploaded photo: enough for a polaroid, small enough to send quickly. */
 const PHOTO_MAX_EDGE = 1600
 

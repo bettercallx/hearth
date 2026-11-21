@@ -190,7 +190,7 @@ test('correcting a mood updates the calendar and the patterns, live', async ({ u
 })
 
 
-test('after an entry: memory link, a nudge from your own pattern, and a habit check-in', async ({ users }) => {
+test('after an entry: memory link and a nudge from your own pattern, nothing more', async ({ users }) => {
   const [alice] = await users(['Alice'])
   const page = alice.page
   // A lunch habit left by an interrupted run would (correctly) change the nudge; start clean.
@@ -215,7 +215,9 @@ test('after an entry: memory link, a nudge from your own pattern, and a habit ch
   habitsMade.set(page, ['Lunch before 1pm'])
   await page.getByTestId('adopt-nudge').click()
   await expect(nudge).toContainText('Just the two-minute version of “Lunch before 1pm”')
-  await expect(page.getByTestId('habit-checkins')).toContainText('Lunch before 1pm')
+  // The reflection stands alone: no summary line, no habit roll-call.
+  await expect(page.getByTestId('reflection')).not.toContainText('Noted:')
+  await expect(page.getByTestId('habit-checkins')).toHaveCount(0)
 })
 
 test('never miss twice: a slipped habit yesterday gets a gentle line before writing', async ({ users }) => {
@@ -240,7 +242,7 @@ test('never miss twice: a slipped habit yesterday gets a gentle line before writ
   await expect(page.getByTestId('never-miss-twice')).toContainText('Yesterday slipped on lunch on time', { timeout: 15_000 })
 })
 
-test('writing an entry gets a reflection, mood tags and a summary back', async ({ users }) => {
+test('writing an entry gets a reflection and mood tags back', async ({ users }) => {
   const [alice] = await users(['Alice'])
   const page = alice.page
   await writeEntry(
@@ -250,7 +252,11 @@ test('writing an entry gets a reflection, mood tags and a summary back', async (
 
   const reflection = page.getByTestId('reflection')
   await expect(reflection).toBeVisible({ timeout: 60_000 })
-  await expect(reflection).toContainText('Noted:')
+  // A real reflection (not the failure fallback), with at least one mood tag.
+  await expect(reflection).not.toContainText("couldn't reflect")
+  await expect(reflection.locator('span.rounded-full').first()).toBeVisible()
+  // The summary is still stored for Looking back; it just isn't repeated here.
+  await expect(reflection).not.toContainText('Noted:')
   await expect(page.getByTestId('crisis-card')).toHaveCount(0)
 })
 

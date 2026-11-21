@@ -31,8 +31,7 @@ reply to each other live.
   analysis, Sonnet for look-backs.
 - **File storage (R2)**: photos taped into the exchange diary, private to the
   two friends through an access-checked route.
-- **Speech integrations**: `speech/speech-to-text` for voice entries and
-  `speech/text-to-speech` for a spoken reflection.
+- **Speech integration**: `speech/speech-to-text` for voice entries.
 - **Cron** (`CronRoom`): weekly look-backs every Sunday, with an admin-only
   run-now panel and history.
 
@@ -69,7 +68,6 @@ users' journals, even though that makes support and debugging harder.
 
 **What I verified myself.** *(Fill in honestly. Suggested checklist:)*
 - [ ] Recorded a real voice entry on my laptop mic. Transcription and reflection were sensible.
-- [ ] Played the spoken reflection.
 - [ ] Loaded the sample journal. The patterns match what I'd expect from reading the entries.
 - [ ] Generated a look-back. The suggestions point at real patterns and dates.
 - [ ] Signed in as a second account and confirmed I can't see the first account's entries.

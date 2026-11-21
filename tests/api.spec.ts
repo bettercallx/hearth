@@ -24,7 +24,7 @@ test.describe('API tests', () => {
   }
 
   test('paid integrations refuse signed-out callers', async ({ request }) => {
-    for (const endpoint of ['anthropic/chat-completion', 'speech/speech-to-text', 'speech/text-to-speech']) {
+    for (const endpoint of ['anthropic/chat-completion', 'speech/speech-to-text']) {
       const res = await request.post(`/api/integrations/${endpoint}`, { data: {} })
       expect(res.status(), endpoint).toBe(401)
     }

@@ -8,7 +8,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutations, useQuery } from 'deepspace'
-import { Check, Flame, History, Sparkles } from 'lucide-react'
+import { History, Sparkles } from 'lucide-react'
 import { Button, useToast } from '@/components/ui'
 import { formatDay } from '@/lib/client'
 import { nudgeFor } from '@/lib/nudge'
@@ -43,21 +43,16 @@ export function AfterEntry({ entry, rows }: { entry: Entry; rows: Row[] }) {
   const date = entry.entryDate
   const from = addDays(date, -(WINDOW - 1))
 
-  const { nudge, checkins } = useMemo(() => {
+  const nudge = useMemo(() => {
     const pts = points(rows, from, date)
     const today = toDays(pts.filter((p) => p.date === date))[0]?.signals
-    const checkins = habits.map((h) => {
-      const progress = habitProgress(h.data.signal as HabitSignal, pts, from, date)
-      return { habit: h.data, done: progress.days.at(-1)?.done ?? null, streak: progress.streak }
-    })
     // Patterns come from the days *before* this one, so "days like this" never counts today itself.
     const before = pts.filter((p) => p.date < date)
-    return { nudge: today ? nudgeFor(today, findPatterns(before)) : null, checkins }
-  }, [rows, from, date, habits])
+    return today ? nudgeFor(today, findPatterns(before)) : null
+  }, [rows, from, date])
 
   const recall = entry.recalls?.[0]
   const existing = nudge ? habits.find((h) => h.data.signal === nudge.habit.signal) : undefined
-  const noticed = checkins.filter((c) => c.done !== null)
 
   const adopt = async () => {
     if (!nudge) return
@@ -76,7 +71,7 @@ export function AfterEntry({ entry, rows }: { entry: Entry; rows: Row[] }) {
     }
   }
 
-  if (!recall && !nudge && noticed.length === 0) return null
+  if (!recall && !nudge) return null
 
   return (
     <div className="mt-6 space-y-4" data-testid="after-entry">
@@ -89,26 +84,6 @@ export function AfterEntry({ entry, rows }: { entry: Entry; rows: Row[] }) {
           <History className="h-3.5 w-3.5" aria-hidden /> Remembering{' '}
           {formatDay(recall, { weekday: 'long', month: 'short', day: 'numeric' })}
         </Link>
-      )}
-
-      {noticed.length > 0 && (
-        <ul data-testid="habit-checkins" className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-          {noticed.map(({ habit, done, streak }) => (
-            <li key={habit.name} className={done ? 'text-foreground' : 'text-muted-foreground'}>
-              {done ? (
-                <Check className="mr-1 inline h-4 w-4 text-primary" aria-hidden />
-              ) : (
-                <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-border align-middle" />
-              )}
-              {habit.name}
-              {done && streak >= 2 && (
-                <span className="ml-1.5 inline-flex items-center gap-0.5 text-xs text-primary">
-                  <Flame className="h-3 w-3" aria-hidden /> {streak} days
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
       )}
 
       {nudge && (

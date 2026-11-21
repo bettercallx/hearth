@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { LifeBuoy, Mic, Volume2, Loader2, Trash2 } from 'lucide-react'
+import { LifeBuoy, Mic, Loader2, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { callAction, formatDay, speak } from '@/lib/client'
+import { callAction, formatDay } from '@/lib/client'
 import type { Entry } from '@/lib/types'
 import { useMutations, useQuery, useUserLookup } from 'deepspace'
 import { EntryPhoto } from './EntryPhoto'
@@ -103,38 +103,6 @@ export function CrisisCard() {
         </div>
       </div>
     </div>
-  )
-}
-
-export function SpeakButton({ text, className }: { text: string; className?: string }) {
-  const [state, setState] = useState<'idle' | 'loading' | 'playing'>('idle')
-  const { error } = useToast()
-  const play = async () => {
-    setState('loading')
-    try {
-      const url = await speak(text)
-      const audio = new Audio(url)
-      audio.onended = () => setState('idle')
-      setState('playing')
-      await audio.play()
-    } catch (e) {
-      setState('idle')
-      error('Could not play voice', e instanceof Error ? e.message : undefined)
-    }
-  }
-  return (
-    <button
-      type="button"
-      onClick={() => void play()}
-      disabled={state !== 'idle'}
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-60',
-        className,
-      )}
-    >
-      {state === 'loading' ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Volume2 className="h-3.5 w-3.5" aria-hidden />}
-      {state === 'playing' ? 'Speaking…' : 'Hear it'}
-    </button>
   )
 }
 

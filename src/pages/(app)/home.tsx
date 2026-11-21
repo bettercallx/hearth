@@ -8,7 +8,7 @@ import { Button, Textarea, useToast } from '@/components/ui'
 import { VoiceWave } from '@/components/hearth/VoiceWave'
 import { ExchangeWindow, LookingBackWindow } from '@/components/hearth/DeskWindows'
 import { cn } from '@/lib/utils'
-import { CrisisCard, SpeakButton, Tag } from '@/components/hearth/bits'
+import { CrisisCard, Tag } from '@/components/hearth/bits'
 import { callAction, formatDay, localToday, transcribe } from '@/lib/client'
 import { useRecorder } from '@/lib/useRecorder'
 import { lastLetterSeen } from '@/lib/letters'
@@ -312,14 +312,13 @@ function Companion({ embedded = false, onFocusChange }: { embedded?: boolean; on
               <p className="font-display text-xl font-light leading-relaxed text-foreground sm:text-2xl">
                 {latest.data.reflection}
               </p>
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                {latest.data.moodTags?.map((t) => (
-                  <Tag key={t}>{t}</Tag>
-                ))}
-                {latest.data.reflection && <SpeakButton text={latest.data.reflection} />}
-              </div>
-              {latest.data.summary && (
-                <p className="mt-3 text-sm text-muted-foreground">Noted: {latest.data.summary}</p>
+              {/* Hearth's words and how it heard you; nothing else competes with them. */}
+              {latest.data.moodTags && latest.data.moodTags.length > 0 && (
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  {latest.data.moodTags.map((t) => (
+                    <Tag key={t}>{t}</Tag>
+                  ))}
+                </div>
               )}
             </div>
           )}
