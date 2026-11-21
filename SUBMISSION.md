@@ -68,18 +68,26 @@ users' journals.
 
 **What I directed.**
 
-- [ x ] Read the DeepSpace docs and other repos
-- [ x ] Chose the product direction: a journal for freelancers who work alone,
-  grounded in Atomic Habits
-- [ x ] Decided the analysis approach: explainable statistics over black-box ML
-- [ x ] cut timeline view, voice reply, iWatch integration, and photo collage to keep the core path
-  finished.
-- [ x ] Reviewed the generated code step by step.
-- [ x ] Recorded a real voice entry on my laptop mic. Transcription and reflection were sensible.
-- [ x ] Loaded the sample journal. The patterns match what I'd expect from reading the entries.
-- [ x ] Asked for a letter. The suggestions point at real patterns and dates.
-- [ x ] Signed in as a second account and confirmed I can't see the first account's entries.
-- [ x ] Paired two accounts by invite link, wrote notebook pages with a photo, and replied from the other side.
-- [ x ] Ran `npx deepspace test run all` and `npm run test:unit` locally: all green.
-- [ x ] On the deployed app, used Settings → "Run now" for the weekly job and checked `npx deepspace logs --search cron`.
-- [ x ] Read the prompts in `src/server/journal-ai.ts` and the thresholds in `src/lib/patterns.ts`.
+- Read the DeepSpace docs and other repos
+- Chose the product direction: a journal for freelancers who work alone,
+  grounded in Atomic Habits.
+- Decided the analysis approach: explainable statistics over black-box ML.
+- Designed the three-panel desk layout and the exchange diary's 
+  handwriting style.
+- cut timeline view, voice reply, 
+  iWatch integration, and photo collage to keep the core path finished.
+- Drove UI iterations: mood colors, calendar heatmap, talk button 
+  placement.
+- Reviewed the generated code step by step.
+
+**What I verified myself.**
+
+- [x] Recorded a real voice entry on my laptop mic.
+- [x] Loaded the sample journal. Patterns match the entries.
+- [x] Asked for a letter. Suggestions point at real patterns and dates.
+- [x] Signed in as a second account and confirmed I can't see the 
+  first account's entries.
+- [x] Paired two accounts by invite link, wrote notebook pages with 
+  a photo, and replied from the other side.
+- [x] Ran tests locally: all green.
+- [x] Read the prompts and thresholds in the source code.
