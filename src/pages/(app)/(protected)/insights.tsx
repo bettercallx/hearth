@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { useMutations, useQuery } from 'deepspace'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { useMutations, useQuery, useUser } from 'deepspace'
+import { markLetterSeen } from '@/lib/letters'
 import { Sparkles, Plus, Check, Info } from 'lucide-react'
 import { Button, ConfirmModal, buttonVariants, useToast } from '@/components/ui'
 import { MoodChart } from '@/components/hearth/MoodChart'
 import { FIRST_MONTH, MonthCalendar } from '@/components/hearth/MonthCalendar'
 import { EntryCard } from '@/components/hearth/bits'
+import { HabitsSection } from '@/components/hearth/HabitsSection'
 import { callAction, formatDay, localToday } from '@/lib/client'
 import { addDays, computeStats, findPatterns, type Confidence, type DayPoint, type Pattern } from '@/lib/patterns'
 import { normalizeSignals } from '@/lib/signals'
@@ -61,6 +63,13 @@ export default function InsightsPage() {
       : ([...byDate.keys()].filter((d) => d.startsWith(month)).sort().at(-1) ?? null)
   const dayRows = selected ? [...(byDate.get(selected) ?? [])].reverse() : []
 
+  // #habits / #letter links (from Today, old /habits) scroll once the data is in.
+  const { hash } = useLocation()
+  useEffect(() => {
+    if (status === 'ready' && (hash === '#habits' || hash === '#letter'))
+      document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth' })
+  }, [hash, status])
+
   // Following an evidence link (?day=…) brings that day into view.
   useEffect(() => {
     if (dayParam) document.getElementById('day-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -98,7 +107,7 @@ export default function InsightsPage() {
     setGenerating(true)
     try {
       await callAction('generateInsight', { days, today })
-      success('Your look-back is ready')
+      success('Hearth wrote you a letter')
     } catch (e) {
       error('No look-back yet', e instanceof Error ? e.message : undefined)
     } finally {
@@ -149,6 +158,9 @@ export default function InsightsPage() {
         </div>
       )}
       <div className="max-w-3xl">
+        <div className="mt-14 border-t border-border pt-10">
+          <HabitsSection />
+        </div>
 
       <div className="mt-14 flex flex-wrap items-end justify-between gap-4 border-t border-border pt-10">
         <div>
@@ -211,15 +223,15 @@ export default function InsightsPage() {
           </section>
 
           {/* AI look-back */}
-          <section className="mt-12">
+          <section id="letter" className="mt-12 scroll-mt-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-display text-2xl font-light text-foreground">Your look-back</h2>
+              <h2 className="font-display text-2xl font-light text-foreground">A letter from Hearth</h2>
               <Button onClick={() => void lookBack()} loading={generating} disabled={stats.daysLogged < 3} data-testid="generate-insight">
-                <Sparkles className="h-4 w-4" aria-hidden /> Write my {days}-day look-back
+                <Sparkles className="h-4 w-4" aria-hidden /> Write me about these {days} days
               </Button>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              A new one also arrives every Sunday evening, covering your week.
+              A new letter about your week also arrives every Sunday evening.
             </p>
             {latest ? (
               <InsightView id={latest.recordId} insight={latest.data} />
@@ -227,7 +239,7 @@ export default function InsightsPage() {
               <p className="mt-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">
                 {stats.daysLogged < 3
                   ? 'Write on at least three days and Hearth can tell you the story of your week.'
-                  : 'Ask Hearth to write the story of these days: what you did, how it felt, and one or two small things to try.'}
+                  : 'Ask Hearth for a letter about these days: what it saw, how they felt, and one or two small things to try.'}
               </p>
             )}
           </section>
@@ -268,6 +280,10 @@ function InsightView({ id, insight }: { id: string; insight: Insight }) {
   const { records: habits } = useQuery<Habit>('habits')
   const { ready, createConfirmed } = useMutations<Habit>('habits')
   const { removeConfirmed } = useMutations<Insight>('insights')
+  const { user } = useUser()
+  const firstName = (user?.name || 'friend').split(' ')[0]
+  // Opening the letter marks it read for the notice on Today.
+  useEffect(() => markLetterSeen(id), [id])
   const [confirmDelete, setConfirmDelete] = useState(false)
   const { success, error } = useToast()
   const adopted = new Set(habits.map((h) => h.data.name))
@@ -316,12 +332,14 @@ function InsightView({ id, insight }: { id: string; insight: Insight }) {
         confirmText="Delete"
         variant="destructive"
       />
-      <div className="space-y-4">
+      <div className="space-y-4 rounded-2xl border border-border bg-card px-6 py-7 sm:px-8">
+        <p className="font-display text-lg text-foreground">Dear {firstName},</p>
         {insight.narrative.split(/\n\n+/).map((para, i) => (
           <p key={i} className="text-[15px] leading-relaxed text-foreground/90">
             {para}
           </p>
         ))}
+        <p className="font-display text-lg italic text-foreground">— Hearth</p>
       </div>
 
       {insight.identity && (

@@ -1,6 +1,6 @@
 # Hearth — submission note (DRAFT — edit into your own words)
 
-**What I built.** Hearth is a voice-first journaling companion. You talk or type
+**What I built.** Hearth is a voice-first journal that remembers you. You talk or type
 about your day. It replies with a short reflection, tags your mood, and pulls
 structured signals out of the entry (sleep, lunch timing, energy, exercise,
 stressors…). Over 7–14 days it shows *evidence-backed* patterns, e.g. "on days
@@ -8,7 +8,11 @@ you skipped or delayed lunch, your afternoon energy averaged 1.8/5 vs 3.8/5",
 with links to the exact days. It then writes a look-back with small habit
 suggestions built on *Atomic Habits*: the four laws, habit stacking, the
 two-minute rule, and never miss twice. Habits track themselves from what you
-say, so there's nothing to tick off. A month calendar colours each day by
+say, so there's nothing to tick off. What makes it feel like a companion:
+each reflection refers back to a similar past day when there is one ("a lot
+like Wednesday the 11th, when meetings also ate lunch"). Right after you
+write, you get one "for tomorrow" nudge drawn from your own pattern, with
+one-tap habit adoption. Every Sunday Hearth writes you a letter. A month calendar colours each day by
 mood, and an **exchange diary** lets two friends share chosen entries and
 reply to each other live.
 

@@ -25,14 +25,16 @@ function daysAgo(n: number) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-/** Entries each test wrote, by page, so afterEach can delete them. */
-const created = new Map<Page, string[]>()
+/** Entries each test wrote (id + day), by page, so afterEach can delete them. */
+const created = new Map<Page, { id: string; date: string }[]>()
 
 /** Type an entry on /home, submit it, and return its record id. */
-async function writeEntry(page: Page, text: string, opts: { share?: boolean } = {}): Promise<string> {
+async function writeEntry(page: Page, text: string, opts: { share?: boolean; daysAgo?: number } = {}): Promise<string> {
   await page.goto('/home')
   await page.getByTestId('type-instead').click()
   await page.getByTestId('entry-input').fill(text)
+  const date = daysAgo(opts.daysAgo ?? 0)
+  if (opts.daysAgo) await page.getByTestId('write-date').selectOption(date)
   if (opts.share !== undefined) {
     const toggle = page.getByTestId('share-toggle')
     await expect(toggle).toBeVisible({ timeout: 15_000 })
@@ -42,15 +44,15 @@ async function writeEntry(page: Page, text: string, opts: { share?: boolean } = 
   const call = page.waitForRequest((r) => r.url().endsWith('/api/actions/analyzeEntry'))
   await page.getByTestId('save-entry').click()
   const id = (JSON.parse((await call).postData() ?? '{}') as { entryId: string }).entryId
-  created.set(page, [...(created.get(page) ?? []), id])
+  created.set(page, [...(created.get(page) ?? []), { id, date }])
   return id
 }
 
 test.afterEach(async () => {
   for (const [page, ids] of created) {
     await page.unroute('**/api/actions/analyzeEntry').catch(() => {})
-    await page.goto(`/insights?day=${today()}`)
-    for (const id of ids) {
+    for (const { id, date } of ids) {
+      await page.goto(`/insights?day=${date}`)
       const card = page.locator(`[data-entry-id="${id}"]`)
       await card.getByRole('button', { name: 'Read entry' }).click()
       await card.getByTestId('delete-entry').click()
@@ -129,6 +131,62 @@ test('correcting a mood updates the calendar and the patterns, live', async ({ u
   await page.getByRole('button', { name: 'Set mood to low' }).click()
   await expect(square).toHaveAttribute('aria-label', /mood low/)
   await expect.poll(() => pattern.innerText()).toBe(before)
+})
+
+
+/** Delete a habit by name from Looking back's habits section. */
+async function deleteHabit(page: Page, name: string) {
+  await page.goto('/insights#habits')
+  const habit = page.getByTestId('habit-card').filter({ hasText: name })
+  await habit.first().getByRole('button', { name: 'Delete habit' }).click()
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  await expect(habit).toHaveCount(0)
+}
+
+test('after an entry: memory link, a nudge from your own pattern, and a habit check-in', async ({ users }) => {
+  const [alice] = await users(['Alice'])
+  const page = alice.page
+  await writeEntry(page, `__test-${Date.now()}__ Back-to-back meetings again and I skipped lunch. Totally foggy by 3pm.`)
+  await expect(page.getByTestId('reflection')).toBeVisible({ timeout: 60_000 })
+
+  // The nudge is code over the sample journal's patterns: deterministic once lunch=skipped is extracted.
+  const nudge = page.getByTestId('nudge')
+  await expect(nudge).toHaveAttribute('data-pattern-id', 'lunch:energyAfternoon')
+  await expect(nudge).toContainText('afternoon energy averaged')
+  await expect(nudge.getByRole('link').first()).toHaveAttribute('href', /\/insights\?day=\d{4}-\d{2}-\d{2}/)
+
+  // Memory: the sample journal has several meeting/lunch days, so Hearth should refer back to one.
+  // Whatever it picks must be a real day from the journal (validated server-side).
+  await expect(page.getByTestId('recall-link')).toHaveAttribute('href', /\/insights\?day=\d{4}-\d{2}-\d{2}/)
+
+  // Taking the suggestion creates the habit, and the check-in reflects today honestly.
+  await page.getByTestId('adopt-nudge').click()
+  await expect(nudge).toContainText('This is what “Lunch before 1pm” is for')
+  await expect(page.getByTestId('habit-checkins')).toContainText('Lunch before 1pm')
+
+  await deleteHabit(page, 'Lunch before 1pm')
+})
+
+test('never miss twice: a slipped habit yesterday gets a gentle line before writing', async ({ users }) => {
+  const [alice] = await users(['Alice'])
+  const page = alice.page
+  // A habit to keep, then an entry about yesterday (via the date picker) where it slipped.
+  await page.goto('/insights#habits')
+  await page.getByTestId('new-habit').click()
+  const name = `__test-${Date.now()}__ lunch`
+  await page.getByTestId('habit-name').fill(name)
+  await page.getByRole('combobox').click()
+  await page.getByRole('option', { name: 'Lunch on time' }).click()
+  await page.getByTestId('save-habit').click()
+  await expect(page.getByTestId('habit-card').filter({ hasText: name })).toBeVisible()
+
+  await writeEntry(page, `__test-${Date.now()}__ Yesterday I completely skipped lunch, no time at all.`, { daysAgo: 1 })
+  await expect(page.getByTestId('reflection')).toBeVisible({ timeout: 60_000 })
+
+  await page.goto('/home')
+  await expect(page.getByTestId('never-miss-twice')).toContainText('Yesterday slipped on lunch on time', { timeout: 15_000 })
+
+  await deleteHabit(page, name)
 })
 
 test('writing an entry gets a reflection, mood tags and a summary back', async ({ users }) => {

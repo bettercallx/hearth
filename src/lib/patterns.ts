@@ -92,7 +92,7 @@ function confidenceFor(minN: number, effect: number): Confidence {
   return 'tentative'
 }
 
-interface Factor {
+export interface Factor {
   id: string
   /** Phrase for the "with" group, e.g. "you ate lunch on time". */
   withLabel: string
@@ -103,7 +103,7 @@ interface Factor {
   outcomes: { key: 'mood' | 'energyMorning' | 'energyAfternoon' | 'energyEvening'; label: string }[]
 }
 
-const FACTORS: Factor[] = [
+export const FACTORS: Factor[] = [
   {
     id: 'lunch',
     withLabel: 'ate lunch on time',

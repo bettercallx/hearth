@@ -18,7 +18,6 @@ export interface NavItem {
 export const nav: NavItem[] = [
   { path: '/home', label: 'Today' },
   { path: '/insights', label: 'Looking back' },
-  { path: '/habits', label: 'Habits' },
   { path: '/exchange', label: 'Exchange' },
   // Settings lives in the account menu to keep the bar short.
   // The /api-status debug page still exists — add

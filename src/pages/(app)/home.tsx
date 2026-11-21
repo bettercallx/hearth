@@ -2,14 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AuthOverlay, useAuth, useMutations } from 'deepspace'
-import { Mic, Square, ArrowRight, Users, Lock } from 'lucide-react'
+import { AuthOverlay, useAuth, useMutations, useQuery } from 'deepspace'
+import { Mic, Square, ArrowRight, Users, Lock, Mail } from 'lucide-react'
 import { Button, Textarea, useToast } from '@/components/ui'
 import { VoiceWave } from '@/components/hearth/VoiceWave'
 import { CrisisCard, EntryCard, SpeakButton, Tag } from '@/components/hearth/bits'
 import { callAction, formatDay, localToday, transcribe } from '@/lib/client'
 import { useRecorder } from '@/lib/useRecorder'
-import type { Entry } from '@/lib/types'
+import { lastLetterSeen } from '@/lib/letters'
+import { addDays } from '@/lib/patterns'
+import { AfterEntry, NeverMissTwice } from '@/components/hearth/AfterEntry'
+import type { Entry, Insight } from '@/lib/types'
 import { joinNames, useFriends, useMyEntries } from '@/lib/social'
 
 const PROMPTS = [
@@ -78,14 +81,33 @@ function SignedOutPreview() {
 
 type Phase = 'compose' | 'recording' | 'transcribing' | 'saving' | 'thinking'
 
+/** A letter from Hearth stays "new" for a week, until it's opened. */
+const LETTER_FRESH_MS = 7 * 24 * 60 * 60 * 1000
+
+function LetterNotice() {
+  const { records } = useQuery<Insight>('insights', { orderBy: 'createdAt', orderDir: 'desc', limit: 1 })
+  const letter = records[0]
+  if (!letter || letter.recordId === lastLetterSeen() || Date.now() - Date.parse(letter.createdAt) > LETTER_FRESH_MS)
+    return null
+  return (
+    <Link
+      to="/insights#letter"
+      data-testid="letter-notice"
+      className="mt-5 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-4 py-2 text-sm text-foreground hover:bg-primary/10"
+    >
+      <Mail className="h-4 w-4 text-primary" aria-hidden />
+      Hearth wrote you a letter about {letter.data.trigger === 'weekly' ? 'your week' : `the last ${letter.data.days} days`}
+      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+    </Link>
+  )
+}
+
 function Companion() {
   const today = localToday()
-  const { records: todays } = useMyEntries({
-    where: { entryDate: today },
-    orderBy: 'createdAt',
-    orderDir: 'desc',
-  })
-  const { records: anyEntries, status: anyStatus } = useMyEntries({ limit: 1 })
+  // Recent entries feed today's list, the reflection, and Hearth's nudges.
+  const { records: recent, status: recentStatus } = useMyEntries({ orderBy: 'createdAt', orderDir: 'desc', limit: 200 })
+  const todays = recent.filter((r) => r.data.entryDate === today)
+  const [writeDate, setWriteDate] = useState(today)
   const { ready, createConfirmed } = useMutations<Entry>('entries')
   const { error, success } = useToast()
   const recorder = useRecorder()
@@ -110,7 +132,7 @@ function Companion() {
   const prompt = useMemo(() => PROMPTS[new Date().getDate() % PROMPTS.length], [])
   const textRef = useRef<HTMLTextAreaElement>(null)
 
-  const latest = todays.find((r) => r.recordId === latestId) ?? null
+  const latest = recent.find((r) => r.recordId === latestId) ?? null
   const earlier = todays.filter((r) => r.recordId !== latestId)
 
   // The reflection arrives over the realtime socket when the action writes it.
@@ -155,7 +177,7 @@ function Companion() {
     try {
       const id = await createConfirmed({
         text: body,
-        entryDate: today,
+        entryDate: writeDate,
         source,
         status: 'pending',
         sharedWith: sharing ? friends.map((f) => f.id) : [],
@@ -164,6 +186,7 @@ function Companion() {
       setText('')
       setTyping(false)
       setSource('text')
+      setWriteDate(today)
       setPhase('thinking')
       await callAction('analyzeEntry', { entryId: id })
     } catch (e) {
@@ -201,6 +224,7 @@ function Companion() {
   return (
     <div className="mx-auto max-w-2xl px-6 pb-24 pt-12 sm:pt-20">
       <DateLine />
+      <LetterNotice />
       <h1 className="mt-4 font-display text-4xl font-light leading-tight text-foreground sm:text-5xl">
         {latest ? 'Thank you for telling me.' : prompt}
       </h1>
@@ -209,6 +233,28 @@ function Companion() {
       <p className="mt-3 min-h-5 text-sm text-muted-foreground" aria-live="polite">
         {statusLine}
       </p>
+      {!latest && phase === 'compose' && !typing && !text && <NeverMissTwice rows={recent} today={today} />}
+
+      {/* First run: a sample journal makes Hearth's memory and patterns visible in a minute */}
+      {recentStatus === 'ready' && recent.length === 0 && (
+        <div data-testid="first-run" className="mt-6 rounded-xl border border-border bg-card p-5">
+          <p className="text-[15px] text-foreground">New here? Give Hearth something to remember.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Load ten days of a sample journal, then tell it about your day. It will connect today to those days and
+            suggest one small thing for tomorrow. Remove the sample any time in Settings.
+          </p>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="mt-4 rounded-full"
+            onClick={() => void seed()}
+            loading={seeding}
+            data-testid="seed-demo"
+          >
+            Load a sample journal
+          </Button>
+        </div>
+      )}
 
       {/* Reflection for the entry just written, as a note in the margin */}
       {latest && latest.data.status !== 'pending' && (
@@ -242,6 +288,9 @@ function Companion() {
               )}
             </div>
           )}
+          {latest.data.status === 'analyzed' && !latest.data.riskFlag && (
+            <AfterEntry entry={latest.data} rows={recent} />
+          )}
         </section>
       )}
 
@@ -259,21 +308,44 @@ function Companion() {
               disabled={busy || phase === 'recording'}
             />
             <div className="flex flex-wrap items-center justify-between gap-3">
-              {phase === 'recording' ? (
-                <Button variant="secondary" size="sm" className="rounded-full" onClick={() => void stopRecording()}>
-                  <Square className="h-3.5 w-3.5" aria-hidden /> Done · {clock}
-                </Button>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-full"
-                  onClick={() => void startRecording()}
-                  disabled={busy || recorder.state === 'unsupported'}
+              <div className="flex items-center gap-1">
+                {phase === 'recording' ? (
+                  <Button variant="secondary" size="sm" className="rounded-full" onClick={() => void stopRecording()}>
+                    <Square className="h-3.5 w-3.5" aria-hidden /> Done · {clock}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() => void startRecording()}
+                    disabled={busy || recorder.state === 'unsupported'}
+                  >
+                    <Mic className="h-4 w-4" aria-hidden /> Add by voice
+                  </Button>
+                )}
+                <label className="sr-only" htmlFor="write-date">
+                  Which day is this about?
+                </label>
+                <select
+                  id="write-date"
+                  data-testid="write-date"
+                  value={writeDate}
+                  onChange={(e) => setWriteDate(e.target.value)}
+                  disabled={busy}
+                  className="rounded-full bg-transparent px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <Mic className="h-4 w-4" aria-hidden /> Add by voice
-                </Button>
-              )}
+                  {Array.from({ length: 7 }, (_, i) => addDays(today, -i)).map((d, i) => (
+                    <option key={d} value={d}>
+                      {i === 0
+                        ? 'About today'
+                        : i === 1
+                          ? 'About yesterday'
+                          : `About ${formatDay(d, { weekday: 'long' })}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="flex items-center gap-2">
                 {friends.length > 0 && (
                   <button
@@ -348,26 +420,6 @@ function Companion() {
           <p className="mt-3 text-sm text-muted-foreground">Microphone access was blocked. You can write instead.</p>
         )}
       </div>
-
-      {/* First run: offer a sample journal so patterns are visible right away */}
-      {anyStatus === 'ready' && anyEntries.length === 0 && (
-        <div className="mt-16 border-t border-border pt-6">
-          <p className="text-sm text-muted-foreground">
-            Patterns need a week or two of entries. Want to see what Hearth notices first? Load ten days of a sample
-            journal; you can remove it any time in Settings.
-          </p>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="mt-3 rounded-full"
-            onClick={() => void seed()}
-            loading={seeding}
-            data-testid="seed-demo"
-          >
-            Load a sample journal
-          </Button>
-        </div>
-      )}
 
       {earlier.length > 0 && (
         <section className="mt-16 space-y-3 border-t border-border pt-6">

@@ -13,6 +13,7 @@ export type Entry = {
   moodTags?: string[]
   summary?: string
   reflection?: string
+  recalls?: string[]
   signals?: DaySignals
   riskFlag?: boolean
   isDemo?: boolean

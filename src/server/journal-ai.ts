@@ -46,6 +46,17 @@ export function parseJsonObject(text: string): Record<string, unknown> {
   return JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>
 }
 
+/** One retry when the reply isn't parseable JSON — models occasionally answer in prose. */
+async function completeJson(complete: Complete, req: CompletionRequest): Promise<Record<string, unknown>> {
+  try {
+    return parseJsonObject(await complete(req))
+  } catch {
+    return parseJsonObject(
+      await complete({ ...req, user: `${req.user}\n\nYour previous reply was not valid JSON. Reply with only the JSON object described.` }),
+    )
+  }
+}
+
 // ── Safety ────────────────────────────────────────────────────────────────
 
 /**
@@ -71,6 +82,15 @@ export interface EntryAnalysis {
   reflection: string
   riskFlag: boolean
   signals: DaySignals
+  /** Past days the reflection refers back to — always dates from the context given. */
+  recalls: string[]
+}
+
+/** A past day offered to the model as memory: only what the person already wrote. */
+export interface MemoryDay {
+  date: string
+  mood: number | null
+  summary: string
 }
 
 const ENTRY_SYSTEM = `You are Hearth, a warm, unhurried journaling companion. Someone has just shared a journal entry with you. You do two jobs at once:
@@ -78,6 +98,8 @@ const ENTRY_SYSTEM = `You are Hearth, a warm, unhurried journaling companion. So
 1. LISTEN. Write a short "reflection" (1–3 sentences) the way a caring friend who is a good listener would: name what they seem to feel, reflect back something specific they said, and leave room. Do not give advice, do not diagnose, do not use therapy jargon, do not be saccharine or use exclamation marks. Write in the same language as the entry.
 
 2. NOTICE. Extract structured signals so patterns can be found later. Only record what the entry states or clearly implies — use null when it is not mentioned. Never guess sleep hours or lunch timing.
+
+3. REMEMBER. You may be given the person's RECENT DAYS. If, and only if, one of them is genuinely similar to today (the same situation or stressor, or something that helped then and could help now), refer to it once, naturally, inside the reflection ("a lot like last Wednesday, when…", "on Nov 11 a walk helped"), and put its date in "recalls". Use only what that day's summary says; never invent details. If nothing is clearly similar, leave "recalls" empty and don't mention the past. Never refer to days not in the list.
 
 Safety: if the entry expresses thoughts of suicide, self-harm, or harming others, set "riskFlag": true and make the reflection gently acknowledge their pain and encourage reaching out to someone they trust or a crisis line. Otherwise false.
 
@@ -88,6 +110,7 @@ Respond with ONLY a JSON object of this exact shape:
   "summary": "one sentence, under 20 words, third-person-free (e.g. 'Skipped lunch for meetings; foggy afternoon.')",
   "reflection": "...",
   "riskFlag": false,
+  "recalls": [] or ["YYYY-MM-DD"] (at most one date, from RECENT DAYS),
   "signals": {
     "energyMorning": 1-5 | null,
     "energyAfternoon": 1-5 | null,
@@ -105,14 +128,22 @@ Respond with ONLY a JSON object of this exact shape:
 }
 "on_time" lunch means roughly 11:30–13:30; "late" is after about 14:00.`
 
-export async function analyzeEntryText(complete: Complete, text: string): Promise<EntryAnalysis> {
-  const raw = await complete({
-    model: ENTRY_MODEL,
-    system: ENTRY_SYSTEM,
-    user: text.slice(0, 8000),
-    maxTokens: 900,
-  })
-  const json = parseJsonObject(raw)
+const weekday = (date: string) => new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' })
+
+export async function analyzeEntryText(
+  complete: Complete,
+  text: string,
+  memory: { today: string; days: MemoryDay[] } = { today: '', days: [] },
+): Promise<EntryAnalysis> {
+  const recent = memory.days
+    .filter((d) => d.summary)
+    .map((d) => `- ${d.date} (${weekday(d.date)}): mood ${d.mood ?? '?'}/5. ${d.summary}`)
+    .join('\n')
+  const user =
+    (recent
+      ? `TODAY (${memory.today}, ${weekday(memory.today)}):\n${text.slice(0, 8000)}\n\nRECENT DAYS (memory; refer back only if genuinely similar):\n${recent}`
+      : `TODAY:\n${text.slice(0, 8000)}`) + '\n\nRespond with the JSON object only.'
+  const json = await completeJson(complete, { model: ENTRY_MODEL, system: ENTRY_SYSTEM, user, maxTokens: 1200 })
   const signals = normalizeSignals({ ...(json.signals as object), mood: json.mood })
   const moodTags = Array.isArray(json.moodTags)
     ? json.moodTags.filter((t): t is string => typeof t === 'string').slice(0, 3)
@@ -124,6 +155,10 @@ export async function analyzeEntryText(complete: Complete, text: string): Promis
     reflection: typeof json.reflection === 'string' ? json.reflection.slice(0, 600) : '',
     riskFlag: json.riskFlag === true || matchesRiskLanguage(text),
     signals,
+    // Only dates we actually offered survive — a model can't "remember" a day that isn't there.
+    recalls: Array.isArray(json.recalls)
+      ? json.recalls.filter((d): d is string => typeof d === 'string' && memory.days.some((m) => m.date === d)).slice(0, 1)
+      : [],
   }
 }
 
@@ -166,7 +201,7 @@ const INSIGHT_SYSTEM = `You are Hearth, a warm journaling companion writing some
 Rules:
 - Never invent numbers or patterns. Only reference the provided patterns by id. If there are none, say there is not enough yet and encourage them to keep writing.
 - Patterns are correlations from a handful of days, not causes. Hedge accordingly ("it looks like", "might"), more for "tentative" ones.
-- Write in second person, plain warm language, specific to their actual days. No therapy jargon, no exclamation marks, no toxic positivity.
+- The narrative is a short LETTER from you, Hearth, to them: first person ("This week I noticed…", "I keep thinking about Thursday…"), addressed to "you", plain warm language, specific to their actual days. No greeting or sign-off; those are added for you. No therapy jargon, no exclamation marks, no toxic positivity.
 - Never quote or describe days marked "hard day (private)" beyond acknowledging the week had very hard moments.
 
 Suggestions follow James Clear's "Atomic Habits":
@@ -180,7 +215,7 @@ The "identity" line is evidence-based identity reinforcement in the style of Ato
 
 Respond with ONLY JSON:
 {
-  "narrative": "2 short paragraphs separated by \\n\\n: first what their days looked like (what they did), then how they felt and how it moved across the days",
+  "narrative": "the letter: 2 short paragraphs separated by \\n\\n, first what you saw them do, then how their days felt and how that moved",
   "highlights": [{"date": "YYYY-MM-DD", "text": "a moment worth remembering, <15 words"}] (2–4 items),
   "identity": "...",
   "patternNotes": [{"id": "<pattern id>", "note": "one gentle sentence on what this might mean for them"}],
@@ -202,13 +237,12 @@ export async function writeInsight(
     patterns: input.patterns.map(({ id, statement, confidence, evidence }) => ({ id, statement, confidence, evidence })),
     existingHabits: input.habits,
   }
-  const raw = await complete({
+  const json = await completeJson(complete, {
     model: INSIGHT_MODEL,
     system: INSIGHT_SYSTEM,
     user: JSON.stringify(payload),
     maxTokens: 2000,
   })
-  const json = parseJsonObject(raw)
   const ids = new Set(input.patterns.map((p) => p.id))
   const dates = new Set(input.days.filter((d) => !d.riskFlag).map((d) => d.date))
 

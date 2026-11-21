@@ -42,6 +42,8 @@ export const entriesSchema: CollectionSchema = {
     { name: 'summary', storage: 'text', interpretation: 'plain' },
     { name: 'reflection', storage: 'text', interpretation: 'plain' },
     { name: 'signals', storage: 'text', interpretation: { kind: 'json' } },
+    /** Past days the reflection referred back to (Hearth's memory). */
+    { name: 'recalls', storage: 'text', interpretation: { kind: 'json' } },
     { name: 'riskFlag', storage: 'number', interpretation: { kind: 'boolean' } },
     { name: 'isDemo', storage: 'number', interpretation: { kind: 'boolean' } },
     /** Friends this entry is shared with (exchange diary). Empty = private. */

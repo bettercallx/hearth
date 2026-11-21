@@ -4,6 +4,7 @@ import { DEMO_ENTRIES } from '../lib/demo'
 import { addDays } from '../lib/patterns'
 import {
   analyzeEntryText,
+  type MemoryDay,
   anthropicBody,
   anthropicText,
   type Complete,
@@ -43,6 +44,25 @@ async function ownEntries(tools: ActionTools, userId: string) {
   return r.data.records
 }
 
+/** How far back Hearth's memory reaches when it reflects on a new entry. */
+const MEMORY_DAYS = 21
+
+/** The person's own recent, analyzed days before `date` — never crisis entries. */
+async function memoryFor(tools: ActionTools, userId: string, date: string, excludeId: string): Promise<MemoryDay[]> {
+  const from = addDays(date, -MEMORY_DAYS)
+  return (await ownEntries(tools, userId))
+    .filter(
+      (r) =>
+        r.recordId !== excludeId &&
+        r.data.status === 'analyzed' &&
+        !r.data.riskFlag &&
+        r.data.entryDate >= from &&
+        r.data.entryDate < date,
+    )
+    .sort((a, b) => a.data.entryDate.localeCompare(b.data.entryDate))
+    .map((r) => ({ date: r.data.entryDate, mood: r.data.mood ?? null, summary: r.data.summary ?? '' }))
+}
+
 const analyzeEntry: ActionHandler<Env> = async ({ userId, params, tools }) => {
   const entryId = typeof params.entryId === 'string' ? params.entryId : ''
   const got = await tools.get<EntryData & Record<string, unknown>>('entries', entryId)
@@ -55,7 +75,10 @@ const analyzeEntry: ActionHandler<Env> = async ({ userId, params, tools }) => {
   }
 
   try {
-    const a = await analyzeEntryText(completeVia(tools), entry.data.text)
+    const a = await analyzeEntryText(completeVia(tools), entry.data.text, {
+      today: entry.data.entryDate,
+      days: await memoryFor(tools, userId, entry.data.entryDate, entryId),
+    })
     // A mood the person set by hand wins over the model's reading.
     if (entry.data.moodEdited && typeof entry.data.mood === 'number') {
       a.mood = entry.data.mood
@@ -69,6 +92,7 @@ const analyzeEntry: ActionHandler<Env> = async ({ userId, params, tools }) => {
       reflection: a.reflection,
       riskFlag: a.riskFlag,
       signals: a.signals,
+      recalls: a.riskFlag ? [] : a.recalls,
       // A crisis entry is never shared, whatever the composer toggle said.
       ...(a.riskFlag ? { sharedWith: [] } : {}),
     })
