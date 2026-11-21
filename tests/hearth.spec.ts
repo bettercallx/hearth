@@ -202,7 +202,9 @@ test('after an entry: memory link, a nudge from your own pattern, and a habit ch
   // The nudge is code over the sample journal's patterns: deterministic once lunch=skipped is extracted.
   const nudge = page.getByTestId('nudge')
   await expect(nudge).toHaveAttribute('data-pattern-id', 'lunch:energyAfternoon')
-  await expect(nudge).toContainText('afternoon energy averaged')
+  // One line to act on, no analysis paragraph.
+  await expect(nudge).toContainText('Set an 11:45 alarm')
+  await expect(nudge).not.toContainText('averaged')
   await expect(nudge.getByRole('link').first()).toHaveAttribute('href', /\/insights\?day=\d{4}-\d{2}-\d{2}/)
 
   // Memory: the sample journal has several meeting/lunch days, so Hearth should refer back to one.
@@ -212,7 +214,7 @@ test('after an entry: memory link, a nudge from your own pattern, and a habit ch
   // Taking the suggestion creates the habit, and the check-in reflects today honestly.
   habitsMade.set(page, ['Lunch before 1pm'])
   await page.getByTestId('adopt-nudge').click()
-  await expect(nudge).toContainText('This is what “Lunch before 1pm” is for')
+  await expect(nudge).toContainText('Just the two-minute version of “Lunch before 1pm”')
   await expect(page.getByTestId('habit-checkins')).toContainText('Lunch before 1pm')
 })
 

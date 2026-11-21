@@ -117,11 +117,12 @@ export function AfterEntry({ entry, rows }: { entry: Entry; rows: Row[] }) {
           data-pattern-id={nudge.patternId}
           className="rounded-xl border border-border bg-card p-5"
         >
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">For tomorrow</p>
-          <p className="mt-2 text-[15px] leading-relaxed text-foreground">{nudge.observation}</p>
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            {nudge.when === 'tonight' ? 'For tonight' : 'For tomorrow'}
+          </p>
           {existing ? (
             <p className="mt-2 text-[15px] leading-relaxed text-foreground">
-              This is what “{existing.data.name}” is for. Tomorrow, just the two-minute version:{' '}
+              Just the two-minute version of “{existing.data.name}”:{' '}
               <span className="text-muted-foreground">{existing.data.twoMinute || nudge.habit.twoMinute}</span>
             </p>
           ) : (
@@ -138,7 +139,8 @@ export function AfterEntry({ entry, rows }: { entry: Entry; rows: Row[] }) {
               </Button>
             </>
           )}
-          <p className="mt-3 text-xs text-muted-foreground">
+          {/* The numbers stay one hover away, not in the way. */}
+          <p className="mt-3 text-xs text-muted-foreground" title={nudge.observation}>
             Based on{' '}
             {nudge.evidence.map((d, i) => (
               <span key={d}>

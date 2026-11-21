@@ -19,17 +19,19 @@ export interface Nudge {
   patternId: string
   /** What happened today, tied to the pattern's numbers. */
   observation: string
-  /** One step for tomorrow (or tonight). */
+  /** One step, no preamble: the card's heading says when. */
   tip: string
+  when: 'tomorrow' | 'tonight'
   habit: HabitTemplate
   evidence: string[]
 }
 
 /** One habit per factor, written with Atomic Habits' stacking and two-minute rule. */
-const PLAYBOOK: Record<string, { today: string; tip: string; habit: HabitTemplate }> = {
+const PLAYBOOK: Record<string, { today: string; tip: string; when: Nudge['when']; habit: HabitTemplate }> = {
   lunch: {
     today: 'Lunch slipped today.',
-    tip: 'For tomorrow: set an 11:45 alarm and eat before the next thing starts.',
+    tip: 'Set an 11:45 alarm and eat before the next thing starts.',
+    when: 'tomorrow',
     habit: {
       name: 'Lunch before 1pm',
       signal: 'lunch_on_time',
@@ -39,7 +41,8 @@ const PLAYBOOK: Record<string, { today: string; tip: string; habit: HabitTemplat
   },
   sleep: {
     today: 'Last night was a short one.',
-    tip: 'Tonight: phone charges outside the bedroom by 10:30.',
+    tip: 'Phone charges outside the bedroom by 10:30.',
+    when: 'tonight',
     habit: {
       name: 'Seven hours of sleep',
       signal: 'sleep_7',
@@ -49,7 +52,8 @@ const PLAYBOOK: Record<string, { today: string; tip: string; habit: HabitTemplat
   },
   exercise: {
     today: "You didn't get to move much today.",
-    tip: 'For tomorrow: a 10-minute walk right after lunch counts.',
+    tip: 'A 10-minute walk right after lunch counts.',
+    when: 'tomorrow',
     habit: {
       name: 'Move every day',
       signal: 'exercise',
@@ -59,7 +63,8 @@ const PLAYBOOK: Record<string, { today: string; tip: string; habit: HabitTemplat
   },
   outdoors: {
     today: 'Today was an indoor day.',
-    tip: 'For tomorrow: five minutes outside, even just to the corner.',
+    tip: 'Five minutes outside, even just to the corner.',
+    when: 'tomorrow',
     habit: {
       name: 'Get outside',
       signal: 'outdoors',
@@ -69,7 +74,8 @@ const PLAYBOOK: Record<string, { today: string; tip: string; habit: HabitTemplat
   },
   social: {
     today: 'Not much time with people today.',
-    tip: 'Tonight or tomorrow: send one message to someone you like.',
+    tip: 'Send one message to someone you like.',
+    when: 'tomorrow',
     habit: {
       name: 'Connect with someone',
       signal: 'social',
@@ -79,7 +85,8 @@ const PLAYBOOK: Record<string, { today: string; tip: string; habit: HabitTemplat
   },
   screens: {
     today: 'Screens ran late tonight.',
-    tip: 'Tonight: phone in another room 30 minutes before bed.',
+    tip: 'Phone in another room 30 minutes before bed.',
+    when: 'tonight',
     habit: {
       name: 'Screens down before bed',
       signal: 'no_late_screen',
@@ -114,6 +121,7 @@ export function nudgeFor(today: DaySignals, patterns: Pattern[]): Nudge | null {
           patternId: p.id,
           observation: `${play.today} On ${n} of your days like this, your ${label} averaged ${worse}/5, against ${better}/5 otherwise.`,
           tip: play.tip,
+          when: play.when,
           habit: play.habit,
           evidence: p.evidence,
         } satisfies Nudge,
