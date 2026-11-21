@@ -154,6 +154,8 @@ export async function fetchEntryPhoto(entryId: string, signal?: AbortSignal): Pr
   const token = await getAuthToken()
   const res = await fetch(`/api/photos/${entryId}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
+    // Skip the HTTP cache too, including copies saved before the route sent no-store.
+    cache: 'no-store',
     signal,
   })
   if (!res.ok) throw new Error(`Photo unavailable (${res.status})`)

@@ -39,7 +39,9 @@ export function registerPhotoRoutes(app: Hono<AppContext>): void {
       return new Response(file.body, {
         headers: {
           'Content-Type': file.headers.get('Content-Type') ?? 'application/octet-stream',
-          'Cache-Control': 'private, max-age=300',
+          // Never cached: a photo must stop being visible the moment its entry is
+          // unshared, and a replaced file must show at once.
+          'Cache-Control': 'no-store',
           'X-Content-Type-Options': 'nosniff',
         },
       })
