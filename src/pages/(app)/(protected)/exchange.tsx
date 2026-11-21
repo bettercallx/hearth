@@ -44,7 +44,7 @@ export default function ExchangePage() {
   const friend = friends.find((f) => f.id === picked) ?? friends[0] ?? null
 
   return (
-    <div className="mx-auto max-w-3xl px-4 pb-24 pt-8 sm:px-5 sm:pt-10">
+    <div className="mx-auto max-w-5xl px-4 pb-24 pt-8 sm:px-5 sm:pt-10">
       {inviteCode && <AcceptInvite code={inviteCode} onDone={() => setParams({}, { replace: true })} />}
 
       {friendsStatus === 'loading' ? (
