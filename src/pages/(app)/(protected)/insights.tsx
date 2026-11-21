@@ -129,15 +129,23 @@ export default function InsightsPage() {
             selected={selected}
             onSelect={(d) => setParams({ day: d }, { replace: true })}
           />
-          <section id="day-panel" data-testid="day-panel" className="space-y-3 lg:pt-14">
+          {/* On wide screens the day's entries take exactly the calendar's height and
+              scroll inside it, so a busy day never stretches the page. */}
+          <section id="day-panel" data-testid="day-panel" className="lg:relative">
+            <div className="flex flex-col gap-3 lg:absolute lg:inset-0 lg:pt-14">
             {selected && dayRows.length > 0 ? (
               <>
-                <h2 className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                  {formatDay(selected, { weekday: 'long', month: 'long', day: 'numeric' })}
+                <h2 className="flex items-baseline justify-between text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  {formatDay(selected, { weekday: 'long', month: 'short', day: 'numeric' })}
+                  <span className="normal-case tracking-normal">
+                    {dayRows.length} {dayRows.length === 1 ? 'entry' : 'entries'}
+                  </span>
                 </h2>
-                {dayRows.map((r) => (
-                  <EntryCard key={r.recordId} id={r.recordId} createdAt={r.createdAt} entry={r.data} showDate={false} />
-                ))}
+                <div data-testid="day-entries" className="-mr-2 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2">
+                  {dayRows.map((r) => (
+                    <EntryCard key={r.recordId} id={r.recordId} createdAt={r.createdAt} entry={r.data} />
+                  ))}
+                </div>
               </>
             ) : (
               <p className="rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">
@@ -154,6 +162,7 @@ export default function InsightsPage() {
                 )}
               </p>
             )}
+            </div>
           </section>
         </div>
       )}

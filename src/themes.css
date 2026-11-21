@@ -49,14 +49,14 @@
 
   --hearth-mood-line: #a4492a;
   --hearth-energy-line: #4f6d96;
-  /* Mood is diverging: purple for heavy days, warm gray for okay, green for
-   * good ones, each arm darker toward its extreme (PRGn-style; validated for
-   * colour-vision deficiency and normal-vision separation on this paper). */
-  --hearth-mood-1: #6b4c9a;
-  --hearth-mood-2: #a58bd0;
-  --hearth-mood-3: #d9d2c6;
-  --hearth-mood-4: #74c086;
-  --hearth-mood-5: #2e8549;
+  /* Mood, earthy and soft: sand and camel for heavy days, warm cream for okay,
+   * grass greens for good ones. Gentle by choice, so neighbouring steps sit
+   * close; every cell also carries its mood word (title, aria-label, legend). */
+  --hearth-mood-1: #c4a07a;
+  --hearth-mood-2: #d4b896;
+  --hearth-mood-3: #e0d5c0;
+  --hearth-mood-4: #b8ccaa;
+  --hearth-mood-5: #8bb07a;
 }
 
 /* Handwriting for the exchange diary: a ballpoint on a school notebook. */

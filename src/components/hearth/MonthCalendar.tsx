@@ -125,11 +125,8 @@ export function MonthCalendar({
               <span
                 className={cn(
                   'absolute left-1.5 top-1 tabular-nums',
-                  has
-                    ? mood !== null && (mood < 1.5 || mood >= 4.5)
-                      ? 'text-white/90'
-                      : 'text-foreground/70'
-                    : 'text-muted-foreground/70',
+                  // Every mood colour is light, so numbers stay in ink.
+                  has ? 'text-foreground/75' : 'text-muted-foreground/70',
                 )}
               >
                 {day}

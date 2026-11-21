@@ -112,7 +112,6 @@ test.afterEach(async () => {
     for (const { id, date } of ids) {
       await page.goto(`/insights?day=${date}`)
       const card = page.locator(`[data-entry-id="${id}"]`)
-      await card.getByRole('button', { name: 'Read entry' }).click()
       await card.getByTestId('delete-entry').click()
       await page.getByRole('button', { name: 'Delete', exact: true }).click()
       await expect(card).toHaveCount(0)
@@ -143,7 +142,12 @@ test('sample journal surfaces the lunch → afternoon energy pattern with eviden
   if ((await filled.count()) === 0) await calendar.getByRole('button', { name: 'Previous month' }).click()
   await expect(filled.first()).toBeVisible()
   await filled.last().click()
-  await expect(page.getByTestId('day-panel').getByTestId('entry-card').first()).toBeVisible()
+  const dayCard = page.getByTestId('day-panel').getByTestId('entry-card').first()
+  await expect(dayCard).toBeVisible()
+  // Each entry carries when it was written ("11:10am Nov 19"); "Read entry" opens the full text.
+  await expect(dayCard.getByTestId('entry-time')).toHaveText(/^\d{1,2}:\d{2}[ap]m [A-Z][a-z]{2} \d{1,2}$/)
+  await dayCard.getByRole('button', { name: 'Read entry' }).click()
+  await expect(dayCard.locator('[id^="entry-body-"]')).toBeVisible()
 
   const card = page.locator('[data-pattern-id="lunch:energyAfternoon"]')
   await expect(card).toBeVisible({ timeout: 20_000 })

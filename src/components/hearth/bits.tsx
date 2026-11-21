@@ -109,17 +109,13 @@ export function CrisisCard() {
 /** An analysis that hasn't landed after this long is treated as stuck. */
 const STUCK_MS = 60_000
 
-export function EntryCard({
-  entry,
-  id,
-  createdAt,
-  showDate = true,
-}: {
-  entry: Entry
-  id: string
-  createdAt: string
-  showDate?: boolean
-}) {
+/** "11:10am Nov 20": when it was written, and the day it's about. */
+function entryStamp(createdAt: string, entryDate: string) {
+  const time = new Date(createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return `${time.toLowerCase().replace(' ', '')} ${formatDay(entryDate, { month: 'short', day: 'numeric' })}`
+}
+
+export function EntryCard({ entry, id, createdAt }: { entry: Entry; id: string; createdAt: string }) {
   const [open, setOpen] = useState(false)
   const [retrying, setRetrying] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -137,19 +133,38 @@ export function EntryCard({
     }
   }
   return (
-    <article id={`entry-${entry.entryDate}`} data-testid="entry-card" data-entry-id={id} className="rounded-xl border border-border bg-card p-5">
-      <header className="flex flex-wrap items-center gap-3">
+    <article
+      id={`entry-${entry.entryDate}`}
+      data-testid="entry-card"
+      data-entry-id={id}
+      className="group rounded-xl border border-border bg-card p-4"
+    >
+      <header className="flex flex-wrap items-center gap-2.5">
         <MoodPicker id={id} entry={entry} />
-        {showDate && <span className="text-sm font-medium text-foreground">{formatDay(entry.entryDate)}</span>}
         {entry.source === 'voice' && <Mic className="h-3.5 w-3.5 text-muted-foreground" aria-label="Spoken entry" />}
         <div className="flex flex-wrap gap-1.5">
           {entry.moodTags?.map((t) => <Tag key={t}>{t}</Tag>)}
         </div>
-        {entry.isDemo && <span className="ml-auto text-[11px] uppercase tracking-wider text-muted-foreground/70">demo</span>}
+        <div className="ml-auto flex items-center gap-2">
+          {entry.isDemo && <span className="text-[11px] uppercase tracking-wider text-muted-foreground/70">demo</span>}
+          <time dateTime={createdAt} data-testid="entry-time" className="text-xs tabular-nums text-muted-foreground">
+            {entryStamp(createdAt, entry.entryDate)}
+          </time>
+          <button
+            type="button"
+            data-testid="delete-entry"
+            aria-label="Delete entry"
+            disabled={!ready}
+            onClick={() => setConfirmDelete(true)}
+            className="rounded p-1 text-muted-foreground/70 transition-opacity hover:text-destructive focus-visible:opacity-100 disabled:opacity-40 sm:opacity-0 sm:group-hover:opacity-100"
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        </div>
       </header>
 
       {stuck ? (
-        <p className="mt-3 flex items-center gap-3 text-sm text-muted-foreground">
+        <p className="mt-2.5 flex items-center gap-3 text-sm text-muted-foreground">
           Not read yet — your words are saved.
           <button
             type="button"
@@ -162,39 +177,27 @@ export function EntryCard({
         </p>
       ) : (
         entry.status === 'pending' && (
-          <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+          <p className="mt-2.5 flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> Hearth is reading this…
           </p>
         )
       )}
       {entry.riskFlag ? (
-        <p className="mt-3 text-sm text-muted-foreground">A hard moment, kept private.</p>
+        <p className="mt-2.5 text-sm text-muted-foreground">A hard moment, kept private.</p>
       ) : (
-        entry.summary && <p className="mt-3 text-[15px] text-foreground">{entry.summary}</p>
+        <p data-testid="entry-summary" className="mt-2.5 text-[15px] leading-relaxed text-foreground">
+          {entry.summary || entry.text.slice(0, 160)}
+        </p>
       )}
-
-      <div className="mt-3 flex items-center gap-4">
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          aria-expanded={open}
-          aria-controls={`entry-body-${id}`}
-        >
-          {open ? 'Hide entry' : 'Read entry'}
-        </button>
-        {open && (
-          <button
-            type="button"
-            data-testid="delete-entry"
-            disabled={!ready}
-            onClick={() => setConfirmDelete(true)}
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive disabled:opacity-50"
-          >
-            <Trash2 className="h-3 w-3" aria-hidden /> Delete
-          </button>
-        )}
-      </div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls={`entry-body-${id}`}
+        className="mt-2 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+      >
+        {open ? 'Hide entry' : 'Read entry'}
+      </button>
       <ConfirmModal
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
