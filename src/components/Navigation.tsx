@@ -13,6 +13,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AuthOverlay, useAuthProfileReady, signOut } from 'deepspace'
 import { CalendarDays, ChevronDown, Home, LogOut, NotebookPen, Settings } from 'lucide-react'
 import { APP_NAME } from '../constants'
+import { formatDay, localToday } from '../lib/client'
 import type { Role } from '../constants'
 import { nav } from '../nav'
 import {
@@ -63,6 +64,10 @@ export default function Navigation() {
           )}
 
           <div className="flex-1" />
+
+          <span className="hidden text-sm text-muted-foreground sm:inline">
+            {formatDay(localToday(), { weekday: 'long', month: 'long', day: 'numeric' })}
+          </span>
 
           {!isLoaded ? null : isSignedIn && !profileReady ? (
             /* Signed in, profile still loading — skeleton pill, never the

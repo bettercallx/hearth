@@ -8,7 +8,7 @@ import { Button, Textarea, useToast } from '@/components/ui'
 import { VoiceWave } from '@/components/hearth/VoiceWave'
 import { ExchangeWindow, LookingBackWindow } from '@/components/hearth/DeskWindows'
 import { cn } from '@/lib/utils'
-import { CrisisCard, EntryCard, SpeakButton, Tag } from '@/components/hearth/bits'
+import { CrisisCard, SpeakButton, Tag } from '@/components/hearth/bits'
 import { callAction, formatDay, localToday, transcribe } from '@/lib/client'
 import { useRecorder } from '@/lib/useRecorder'
 import { lastLetterSeen } from '@/lib/letters'
@@ -39,18 +39,6 @@ function readShare() {
 /** Ruled-paper lines behind the editor, spaced to match its 2rem line height. */
 const RULED =
   'bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_calc(2rem-1px),var(--color-border)_calc(2rem-1px),var(--color-border)_2rem)] bg-local leading-8'
-
-function DateLine() {
-  return (
-    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-      {formatDay(localToday(), {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-      })}
-    </p>
-  )
-}
 
 export default function HomePage() {
   const { isSignedIn } = useAuth()
@@ -100,8 +88,7 @@ function SignedOutPreview() {
   const [showAuth, setShowAuth] = useState(false)
   return (
     <div className="mx-auto max-w-2xl px-6 pb-20 pt-16 sm:pt-24">
-      <DateLine />
-      <h1 className="mt-4 font-display text-4xl font-light leading-tight text-foreground sm:text-5xl">
+      <h1 className="font-display text-4xl font-light leading-tight text-foreground sm:text-5xl">
         How was today?
       </h1>
       <VoiceWave levels={[]} active={false} className="mt-8" />
@@ -256,9 +243,7 @@ function Companion({ embedded = false, onFocusChange }: { embedded?: boolean; on
         ? 'Catching your words…'
         : phase === 'saving' || phase === 'thinking'
           ? 'Reading what you wrote…'
-          : latest || typing || text
-            ? ''
-            : 'Talk for a minute, or write. Nothing is shared until you say so.'
+          : ''
 
   const busy = phase !== 'compose' && phase !== 'recording'
 
@@ -268,15 +253,16 @@ function Companion({ embedded = false, onFocusChange }: { embedded?: boolean; on
 
   return (
     <div className={embedded ? 'mx-auto max-w-2xl' : 'mx-auto max-w-2xl px-6 pb-24 pt-12 sm:pt-20'}>
-      <DateLine />
       {/* On the desk the letter lives in the Looking back window. */}
       {!embedded && <LetterNotice />}
-      <h1 className="mt-4 font-display text-4xl font-light leading-tight text-foreground sm:text-5xl">
+      {/* Right padding keeps the question clear of the "Only you" badge. */}
+      <h1 className="pr-20 font-display text-4xl font-light leading-tight text-foreground sm:pr-28 sm:text-5xl">
         {latest ? 'Thank you for telling me.' : prompt}
       </h1>
 
       <VoiceWave levels={recorder.levels} active={phase === 'recording'} className="mt-8" />
-      <p className="mt-3 min-h-5 text-sm text-muted-foreground" aria-live="polite">
+      {/* Status only while something is happening (listening, transcribing, reading); otherwise no extra line. */}
+      <p className={statusLine ? 'mt-3 text-sm text-muted-foreground' : 'sr-only'} aria-live="polite">
         {statusLine}
       </p>
       {!latest && phase === 'compose' && !typing && !text && <NeverMissTwice rows={recent} today={today} />}
@@ -468,21 +454,16 @@ function Companion({ embedded = false, onFocusChange }: { embedded?: boolean; on
         )}
       </div>
 
+      {/* One quiet line, however many entries: the full day lives in Looking back. */}
       {earlier.length > 0 && (
-        <section className="mt-16 space-y-3 border-t border-border pt-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Earlier today</h2>
-            <Link
-              to="/insights"
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-            >
-              All your days <ArrowRight className="h-3 w-3" aria-hidden />
-            </Link>
-          </div>
-          {earlier.map((r) => (
-            <EntryCard key={r.recordId} id={r.recordId} createdAt={r.createdAt} entry={r.data} showDate={false} />
-          ))}
-        </section>
+        <Link
+          to={`/insights?day=${today}`}
+          data-testid="earlier-today"
+          className="mt-14 inline-flex items-center gap-1.5 text-sm text-muted-foreground underline decoration-border underline-offset-4 hover:text-foreground hover:decoration-foreground"
+        >
+          {earlier.length === 1 ? 'You wrote once more today' : `You wrote ${earlier.length} more times today`}
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+        </Link>
       )}
     </div>
   )
