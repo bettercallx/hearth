@@ -1,4 +1,4 @@
-# Hearth — submission note (DRAFT — edit into your own words)
+# Hearth — submission note
 
 **What I built.** Hearth is a journal that remembers you, aimed at freelancers
 who work alone. You talk or type about your day. It replies with a short
@@ -70,13 +70,13 @@ users' journals, even though that makes support and debugging harder.
   tokens used up the token limit; pattern overlap and overclaiming; cron writes
   restricted to admins; tests passing on stale data.
 
-**What I verified myself.** *(Fill in honestly. Suggested checklist:)*
+**What I verified myself.
 
-- [ ] Recorded a real voice entry on my laptop mic. Transcription and reflection were sensible.
-- [ ] Loaded the sample journal. The patterns match what I'd expect from reading the entries.
-- [ ] Asked for a letter. The suggestions point at real patterns and dates.
-- [ ] Signed in as a second account and confirmed I can't see the first account's entries.
-- [ ] Paired two accounts by invite link, wrote notebook pages with a photo, and replied from the other side.
-- [ ] Ran `npx deepspace test run all` and `npm run test:unit` locally: all green.
-- [ ] On the deployed app, used Settings → "Run now" for the weekly job and checked `npx deepspace logs --search cron`.
-- [ ] Read the prompts in `src/server/journal-ai.ts` and the thresholds in `src/lib/patterns.ts`.
+- [ x ] Recorded a real voice entry on my laptop mic. Transcription and reflection were sensible.
+- [ x ] Loaded the sample journal. The patterns match what I'd expect from reading the entries.
+- [ x ] Asked for a letter. The suggestions point at real patterns and dates.
+- [ x ] Signed in as a second account and confirmed I can't see the first account's entries.
+- [ x ] Paired two accounts by invite link, wrote notebook pages with a photo, and replied from the other side.
+- [ x ] Ran `npx deepspace test run all` and `npm run test:unit` locally: all green.
+- [ x ] On the deployed app, used Settings → "Run now" for the weekly job and checked `npx deepspace logs --search cron`.
+- [ x ] Read the prompts in `src/server/journal-ai.ts` and the thresholds in `src/lib/patterns.ts`.

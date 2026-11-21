@@ -27,8 +27,6 @@ import { schemas } from '../../schemas'
 export default function AppLayout() {
   return (
     <DeepSpaceAuthProvider>
-      {/* The prerendered landing owns the document <title> and React drops it
-          when <Seo> unmounts, so every route without <Seo> sets its own. */}
       <title>{APP_NAME}</title>
       <AuthBoot>
         <div className="flex h-screen flex-col bg-background overflow-hidden">

@@ -380,13 +380,6 @@ const matches = (pathname: string, prefixes: readonly string[]): boolean =>
 const API_PREFIXES = ['/api']
 
 /**
- * The plain SPA shell prerender.ts (app root) writes beside the prerendered
- * pages: the built index.html with #root still empty. Extensionless, so the
- * asset layer's auto-trailing-slash serves `_spa.html` at it.
- */
-const SPA_SHELL_PATH = '/_spa'
-
-/**
  * A FILE, not a client route: last segment carries an extension. Wrong in only
  * the cheap direction — a dotted route 404s visibly, where a missing file
  * getting the shell is HTML parsed as JavaScript and a blank page.
@@ -422,14 +415,6 @@ export function registerStaticRoutes(app: Hono<AppContext>): void {
     if (namesAFile(url.pathname) || isPlatformReservedPath(url.pathname)) {
       return c.json({ error: 'not_found' }, 404)
     }
-    // Once the prerender has run, `/` is the landing page, not an empty
-    // shell — serving it for /home would paint the landing for a frame and
-    // hand crawlers the `/` canonical on every app route. Ask for the plain
-    // shell the build writes first; a build without it (plain SPA,
-    // `deepspace dev`) misses and falls through to `/` exactly as before.
-    url.pathname = SPA_SHELL_PATH
-    const shell = await c.env.ASSETS.fetch(new Request(url.toString(), c.req.raw))
-    if (shell.status !== 404) return shell
     // `/`, not `/index.html`: auto-trailing-slash redirects the explicit
     // filename, and the browser would follow it off the URL it asked for.
     url.pathname = '/'

@@ -1,18 +1,10 @@
-/**
- * Landing page — a STATIC page (no providers, prerendered at build).
- * Keep it renderable without a browser: no window/document during render.
- * Layout: split hero — the pitch on one side, a still of the real product
- * (a reflection and a pattern card) on the other.
- */
+/** Landing page: the pitch on one side, a still of the real product (a reflection and a pattern card) on the other. */
 
 import { Link } from 'react-router-dom'
-import { Seo } from '../components/Seo'
-import { seo } from '../seo'
 
 export default function Landing() {
   return (
     <>
-      <Seo {...seo} path="/" />
       <div data-testid="static-landing" className="min-h-screen bg-background text-foreground">
         <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
           <span className="font-display text-xl">Hearth</span>
