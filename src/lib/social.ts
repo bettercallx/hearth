@@ -7,7 +7,7 @@
 import { useMemo } from 'react'
 import { useAuth, useQuery, useUserLookup } from 'deepspace'
 import type { Entry } from './types'
-import { DEMO_FRIEND, isDemoUser } from './demo-friend'
+import { DEMO_FRIEND, isDemoUser } from '../constants'
 
 type QueryOptions = { where?: Partial<Entry>; orderBy?: string; orderDir?: 'asc' | 'desc'; limit?: number }
 

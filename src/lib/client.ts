@@ -147,3 +147,22 @@ export async function fetchEntryPhoto(entryId: string, signal?: AbortSignal): Pr
   if (!res.ok) throw new Error(`Photo unavailable (${res.status})`)
   return URL.createObjectURL(await res.blob())
 }
+
+/** "A letter is waiting" is remembered per browser; losing it just shows the notice again. */
+const LETTER_KEY = 'hearth.lastLetterSeen'
+
+export function lastLetterSeen(): string | null {
+  try {
+    return localStorage.getItem(LETTER_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function markLetterSeen(id: string) {
+  try {
+    localStorage.setItem(LETTER_KEY, id)
+  } catch {
+    // Storage blocked: the notice shows again next time.
+  }
+}

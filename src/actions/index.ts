@@ -2,7 +2,7 @@ import { appFiles } from 'deepspace/worker'
 import type { ActionHandler, ActionTools } from 'deepspace/worker'
 import type { Env } from '../../worker'
 import { DEMO_ENTRIES, DEMO_FRIEND_ENTRIES, DEMO_REPLIES } from '../lib/demo'
-import { DEMO_FRIEND, isDemoUser } from '../lib/demo-friend'
+import { DEMO_FRIEND, isDemoUser } from '../constants'
 import { createActionTools } from '../server/action-routes'
 import { addDays } from '../lib/patterns'
 import {

@@ -1,6 +1,6 @@
 /**
  * Header: the Hearth wordmark (home), a breadcrumb on full-page views, the
- * date, and the account menu (pages from nav.ts, sign-out). Keep the
+ * date, and the account menu (the full-page views, sign-out). Keep the
  * data-testid hooks (`app-navigation`, `nav-sign-in-button`,
  * `nav-user-name`, `nav-user-email`); the tests rely on them.
  */
@@ -11,8 +11,6 @@ import { AuthOverlay, useAuthProfileReady, signOut } from 'deepspace'
 import { CalendarDays, ChevronDown, Home, LogOut, NotebookPen, Settings } from 'lucide-react'
 import { APP_NAME } from '../constants'
 import { formatDay, localToday } from '../lib/client'
-import type { Role } from '../constants'
-import { nav } from '../nav'
 import {
   Avatar,
   AvatarFallback,
@@ -25,6 +23,13 @@ import {
   DropdownMenuTrigger,
 } from './ui'
 
+/** Hearth has no tab bar: these are the full-page views a desk window opens. */
+const NAV = [
+  { path: '/insights', label: 'Looking back' },
+  { path: '/exchange', label: 'Exchange diary' },
+  { path: '/settings', label: 'Settings' },
+]
+
 export default function Navigation() {
   const { isLoaded, isSignedIn, user, userLoading } = useAuthProfileReady({ requireUser: true })
   const location = useLocation()
@@ -32,17 +37,8 @@ export default function Navigation() {
   const [showAuthModal, setShowAuthModal] = useState(false)
 
   const profileReady = !isSignedIn || (!userLoading && !!user)
-  const userRole = (user?.role ?? 'anonymous') as Role | 'anonymous'
-
-  const visibleNav = nav.filter((item) => {
-    if (item.devOnly && !import.meta.env.DEV) return false
-    if (!item.roles) return true
-    if (!profileReady) return false
-    if (userRole === 'admin') return true
-    return item.roles.includes(userRole as Role)
-  })
   // Away from the desk, say where you are; the wordmark always leads back.
-  const here = visibleNav.find((item) => location.pathname.startsWith(item.path))
+  const here = NAV.find((item) => location.pathname.startsWith(item.path))
 
   return (
     <>
@@ -117,7 +113,7 @@ export default function Navigation() {
                   <Home aria-hidden />
                   Hearth
                 </DropdownMenuItem>
-                {visibleNav.map((item) => (
+                {NAV.map((item) => (
                   <DropdownMenuItem key={item.path} onClick={() => navigate(item.path)}>
                     {item.path === '/settings' ? <Settings aria-hidden /> : item.path === '/exchange' ? <NotebookPen aria-hidden /> : <CalendarDays aria-hidden />}
                     {item.label}

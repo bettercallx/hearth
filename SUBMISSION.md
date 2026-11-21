@@ -3,17 +3,15 @@
 **What I built.** Hearth is a journal that remembers you, aimed at freelancers
 who work alone. You talk or type about your day. It replies with a short
 reflection, tags your mood, and pulls structured signals out of the entry
-(sleep, lunch timing, energy across the day, exercise, stressors…). Over 7–14
-days it shows *evidence-backed* patterns, e.g. "on days you skipped or delayed
-lunch, your mood averaged 2.2/5 vs 3.9/5", with links to the exact days. Habits
-follow *Atomic Habits* (identity, habit stacking, the two-minute rule, never miss
-twice) and track themselves from what you say, so there's nothing to tick off.
-What makes it feel like a companion: each reflection refers back to a similar
-past day when there is one; right after you write, you get one "for tomorrow"
-nudge drawn from your own pattern, with one-tap habit adoption; every Sunday
-Hearth writes you a letter. A month calendar colours each day by mood, and a
-school-notebook **exchange diary** lets two friends write pages to each other,
-tape in photos and reply live.
+(sleep, lunch timing, energy across the day, exercise, stressors…).
+
+Over 7–14 days it shows *evidence-backed* patterns, with links to the exact days.
+
+Habits follow *Atomic Habits* (identity, habit stacking, the two-minute rule) 
+and track themselves from what you say, so there's nothing to tick off.
+
+Every Sunday Hearth writes you a letter. A month calendar colours each day by mood, and a
+**exchange diary** lets two friends write pages to each other, tape in photos and reply live.
 
 **DeepSpace integrations used.**
 
@@ -35,8 +33,8 @@ tape in photos and reply live.
 - **Cron** (`CronRoom`): weekly letters every Sunday, with an admin-only
   run-now panel and history.
 
-**Main tradeoff.** No machine learning, on purpose. Two weeks of journaling is
-fourteen data points, too few to train anything honest. Instead:
+**Main tradeoff.** No machine learning. Two weeks of journaling is
+fourteen data points, too few to train. Instead:
 
 - The LLM's job is narrow: it maps free text onto a fixed vocabulary.
 - Plain, unit-tested code does transparent with/without comparisons. It needs at
@@ -51,7 +49,7 @@ same good days). The UI says plainly that these are hints, not causes. The
 benefit: every claim is explainable and traceable to your own entries.
 
 A second tradeoff: privacy over admin convenience. The app owner cannot read
-users' journals, even though that makes support and debugging harder.
+users' journals.
 
 **What the agent did.** Claude Code (Opus) did the following:
 

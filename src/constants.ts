@@ -1,21 +1,15 @@
-/** App name — replaced by the CLI during scaffolding */
 export const APP_NAME = 'Hearth'
 
-/** Immutable app identity — data scope keys to this, so renames never
- *  strand your records.
- *
- *  Injected by the build from `DEEPSPACE_APP_ID` in the wrangler config this
- *  build is running against — `deepspaceBuild()` in vite.config.ts supplies the
- *  define (see `deepspace/build`). wrangler.toml is the only source of truth,
- *  so `deepspace dev start`, `vite build`, and `deepspace deploy --env <name>`
- *  each get their own environment's id — not a copy frozen at scaffold time.
- *  Do not replace this with a literal: that is how a staging browser ends up
- *  reading production's rooms. */
+/** Injected by deepspaceBuild() from DEEPSPACE_APP_ID in wrangler.toml; never hard-code it. */
 declare const __DEEPSPACE_APP_ID__: string
-const APP_ID: string = __DEEPSPACE_APP_ID__
 
-/** Primary scope ID for the app's RecordRoom DO */
-export const SCOPE_ID = `app:${APP_ID}`
+/** Scope of the app's RecordRoom. */
+export const SCOPE_ID = `app:${__DEEPSPACE_APP_ID__}`
 
-/** Role names, from the SDK (single source of truth) */
-export type { Role } from 'deepspace'
+/**
+ * The sample friend who comes with the demo data. Not a real account: an id no
+ * auth user can have, written only by seedDemo and removed by clearDemo.
+ */
+export const DEMO_FRIEND = { id: 'demo-mia', name: 'Mia' } as const
+
+export const isDemoUser = (id: string | undefined | null) => !!id && id.startsWith('demo-')

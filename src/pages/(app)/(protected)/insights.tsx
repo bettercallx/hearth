@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { useMutations, useQuery, useUser } from 'deepspace'
-import { markLetterSeen } from '@/lib/letters'
+import { markLetterSeen } from '@/lib/client'
 import { Sparkles, Plus, Check, ChevronDown } from 'lucide-react'
 import { Button, ConfirmModal, buttonVariants, useToast } from '@/components/ui'
 import { DayRhythm } from '@/components/hearth/DayRhythm'

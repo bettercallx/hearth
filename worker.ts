@@ -18,12 +18,11 @@ import {
   workerErrorHandler,
   YjsRoom,
 } from 'deepspace/worker'
-import type { DOBindings, DOManifest, Job, JobContext } from 'deepspace/worker'
+import type { DOBindings, DOManifest, Job } from 'deepspace/worker'
 import { AI_CHATS_SCHEMA } from 'deepspace/schema'
 import { registerAgent } from './src/ai/agent.js'
 import { buildTools } from './src/ai/tools.js'
 import { tasks as cronTasks, runTask as runCronTask } from './src/cron.js'
-import { runJob } from './src/jobs.js'
 import { schemas } from './src/schemas.js'
 import { registerActionRoutes } from './src/server/action-routes.js'
 import {
@@ -66,7 +65,7 @@ export class AppCronRoom extends CronRoom<Env> {
   }
 }
 
-/** Runs durable background work defined in src/jobs.ts. */
+/** Hearth runs no background jobs; the room stays because removing a Durable Object class needs a migration. */
 export class AppJobRoom extends JobRoom<Env> {
   constructor(state: DurableObjectState, env: Env) {
     super(state, env, {
@@ -78,8 +77,8 @@ export class AppJobRoom extends JobRoom<Env> {
     })
   }
 
-  protected async onJob(job: Job, context: JobContext): Promise<unknown> {
-    return await runJob(job, context, this.env)
+  protected async onJob(job: Job): Promise<unknown> {
+    throw new Error(`Unknown job type: ${job.type}`)
   }
 }
 

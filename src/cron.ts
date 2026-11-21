@@ -14,7 +14,7 @@ import type { Env } from '../worker'
 import { anthropicBody, anthropicText, type Complete } from './server/journal-ai'
 import { buildInsight, MIN_DAYS_FOR_INSIGHT, type EntryRow } from './server/insight'
 import { addDays } from './lib/patterns'
-import { isDemoUser } from './lib/demo-friend'
+import { isDemoUser } from './constants'
 
 const TIMEZONE = 'America/New_York'
 
