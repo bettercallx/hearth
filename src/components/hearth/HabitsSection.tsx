@@ -6,7 +6,7 @@
 
 import { useMemo, useState } from 'react'
 import { useMutations, useQuery } from 'deepspace'
-import { Plus, Trash2, Pause, Play, Flame } from 'lucide-react'
+import { ChevronDown, Plus, Trash2, Pause, Play, Flame } from 'lucide-react'
 import {
   Button,
   ConfirmModal,
@@ -28,11 +28,18 @@ import { cn } from '@/lib/utils'
 import { useMyEntries } from '@/lib/social'
 
 const WINDOW = 14
+/** How many habits show at once; keeping it to two keeps them doable. */
+const MAX_CURRENT = 2
 
 export function HabitsSection() {
   const today = localToday()
   const start = addDays(today, -(WINDOW - 1))
   const { records: habits, status } = useQuery<Habit>('habits', { orderBy: 'createdAt', orderDir: 'asc' })
+  const [showEarlier, setShowEarlier] = useState(false)
+  // Two habits at a time: the newest active ones. Older and paused ones fold away.
+  const newestFirst = [...habits].reverse()
+  const current = newestFirst.filter((h) => h.data.active).slice(0, MAX_CURRENT)
+  const earlier = newestFirst.filter((h) => !current.includes(h))
   const { records: entries } = useMyEntries({ orderBy: 'createdAt', orderDir: 'asc', limit: 500 })
   const [creating, setCreating] = useState(false)
 
@@ -68,14 +75,44 @@ export function HabitsSection() {
             <p className="mt-2">Or take one of Hearth's suggestions after an entry, or from its letter below.</p>
           </div>
         ) : (
-          habits.map((h) => (
-            <HabitCard
-              key={h.recordId}
-              id={h.recordId}
-              habit={h.data}
-              progress={h.data.signal ? habitProgress(h.data.signal as HabitSignal, points, start, today) : null}
-            />
-          ))
+          <>
+            <div className="grid gap-4 lg:grid-cols-2">
+              {current.map((h) => (
+                <HabitCard
+                  key={h.recordId}
+                  id={h.recordId}
+                  habit={h.data}
+                  progress={h.data.signal ? habitProgress(h.data.signal as HabitSignal, points, start, today) : null}
+                />
+              ))}
+            </div>
+            {earlier.length > 0 && (
+              <div>
+                <button
+                  type="button"
+                  data-testid="earlier-habits-toggle"
+                  onClick={() => setShowEarlier((v) => !v)}
+                  aria-expanded={showEarlier}
+                  className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                >
+                  <ChevronDown className={cn('h-4 w-4 transition-transform', showEarlier && 'rotate-180')} aria-hidden />
+                  {earlier.length} earlier {earlier.length === 1 ? 'habit' : 'habits'}
+                </button>
+                {showEarlier && (
+                  <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                    {earlier.map((h) => (
+                      <HabitCard
+                        key={h.recordId}
+                        id={h.recordId}
+                        habit={h.data}
+                        progress={h.data.signal ? habitProgress(h.data.signal as HabitSignal, points, start, today) : null}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -151,10 +188,8 @@ function HabitCard({ id, habit, progress }: { id: string; habit: Habit; progress
           </div>
           <p className="mt-3 text-sm text-muted-foreground" data-testid="habit-status">
             {progress.missedTwice
-              ? "Two misses in a row. That's fine, it happens. The rule is never miss twice, so today is the day: just the two-minute version."
-              : progress.missedOnce
-                ? 'Missed one. One miss is an accident; just don’t let it become two.'
-                : `${progress.doneCount} of the last ${progress.days.length} days, ${HABIT_SIGNALS[habit.signal as HabitSignal].label.toLowerCase()}.`}
+              ? 'Two misses in a row. Today, just the two-minute version.'
+              : `${progress.doneCount} of the last ${progress.days.length} days, ${HABIT_SIGNALS[habit.signal as HabitSignal].label.toLowerCase()}.`}
           </p>
         </>
       ) : (

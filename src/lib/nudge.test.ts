@@ -9,9 +9,10 @@ const patterns = findPatterns(DEMO_ENTRIES.map((e, i) => ({ date: addDays('2026-
 describe('nudgeFor', () => {
   it('turns a skipped lunch into the lunch nudge, with the real numbers', () => {
     const n = nudgeFor({ ...EMPTY_SIGNALS, lunch: 'skipped' }, patterns)
-    expect(n?.patternId).toBe('lunch:energyAfternoon')
-    expect(n?.observation).toContain('1.8/5')
-    expect(n?.observation).toContain('3.8/5')
+    expect(n?.patternId).toBe('lunch:mood')
+    expect(n?.observation).toContain('2.2/5')
+    expect(n?.observation).toContain('3.9/5')
+    expect(n?.when).toBe('tomorrow')
     expect(n?.habit.signal).toBe('lunch_on_time')
     expect(n?.evidence.length).toBeGreaterThan(0)
   })
@@ -31,7 +32,7 @@ describe('nudgeFor', () => {
 
   it('picks the strongest pattern when several match', () => {
     const rough = { ...EMPTY_SIGNALS, lunch: 'skipped' as const, outdoors: false, lateScreen: true }
-    // lunch→afternoon energy is the consistent, largest effect in the demo data.
-    expect(nudgeFor(rough, patterns)?.patternId).toBe('lunch:energyAfternoon')
+    // lunch→mood is consistent and tied for the largest effect; lunch comes first.
+    expect(nudgeFor(rough, patterns)?.patternId).toBe('lunch:mood')
   })
 })

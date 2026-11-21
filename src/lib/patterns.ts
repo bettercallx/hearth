@@ -57,7 +57,7 @@ export interface RangeStats {
   bestDays: string[]
   topStressors: { tag: StressorTag; count: number }[]
   topPositives: { tag: PositiveTag; count: number }[]
-  series: { date: string; mood: number | null; energyAfternoon: number | null }[]
+  series: { date: string; mood: number | null; energy: number | null }[]
 }
 
 const MIN_GROUP = 2
@@ -100,7 +100,21 @@ export interface Factor {
   test: (s: DaySignals) => boolean | null
   /** 1 = the factor on day d is compared to the outcome on day d+1. */
   lag: 0 | 1
-  outcomes: { key: 'mood' | 'energyMorning' | 'energyAfternoon' | 'energyEvening'; label: string }[]
+  outcomes: { key: Outcome; label: string }[]
+}
+
+/** What a day is judged by: how it felt, and how much energy it had overall. */
+export type Outcome = 'mood' | 'energy'
+
+/** The whole day's energy: the mean of whatever parts of the day were mentioned. */
+export function dayEnergy(s: DaySignals): number | null {
+  const parts = [s.energyMorning, s.energyAfternoon, s.energyEvening].filter((v): v is number => typeof v === 'number')
+  return parts.length ? Math.round((parts.reduce((a, b) => a + b, 0) / parts.length) * 10) / 10 : null
+}
+
+function outcomeOf(s: DaySignals | undefined, key: Outcome): number | null {
+  if (!s) return null
+  return key === 'mood' ? s.mood : dayEnergy(s)
 }
 
 export const FACTORS: Factor[] = [
@@ -111,7 +125,7 @@ export const FACTORS: Factor[] = [
     test: (s) => (s.lunch === null ? null : s.lunch === 'on_time'),
     lag: 0,
     outcomes: [
-      { key: 'energyAfternoon', label: 'afternoon energy' },
+      { key: 'energy', label: 'energy' },
       { key: 'mood', label: 'mood' },
     ],
   },
@@ -123,7 +137,7 @@ export const FACTORS: Factor[] = [
     lag: 0,
     outcomes: [
       { key: 'mood', label: 'mood' },
-      { key: 'energyMorning', label: 'morning energy' },
+      { key: 'energy', label: 'energy' },
     ],
   },
   {
@@ -132,7 +146,10 @@ export const FACTORS: Factor[] = [
     withoutLabel: "didn't exercise",
     test: (s) => s.exercise,
     lag: 0,
-    outcomes: [{ key: 'mood', label: 'mood' }],
+    outcomes: [
+      { key: 'mood', label: 'mood' },
+      { key: 'energy', label: 'energy' },
+    ],
   },
   {
     id: 'outdoors',
@@ -157,7 +174,7 @@ export const FACTORS: Factor[] = [
     test: (s) => (s.lateScreen === null ? null : !s.lateScreen),
     lag: 1,
     outcomes: [
-      { key: 'energyMorning', label: 'next-morning energy' },
+      { key: 'energy', label: 'next-day energy' },
       { key: 'mood', label: 'next-day mood' },
     ],
   },
@@ -175,8 +192,8 @@ function findAssociations(days: DayPoint[]): Pattern[] {
         const factor = f.test(d.signals)
         if (factor === null) continue
         const target = f.lag ? byDate.get(addDays(d.date, 1)) : d.signals
-        const v = target?.[o.key]
-        if (typeof v !== 'number') continue
+        const v = outcomeOf(target, o.key)
+        if (v === null) continue
         ;(factor ? withVals : withoutVals).push({ date: d.date, v })
       }
       if (withVals.length < MIN_GROUP || withoutVals.length < MIN_GROUP) continue
@@ -322,7 +339,7 @@ export function computeStats(points: DayPoint[]): RangeStats {
     bestDays: moods.filter((m) => m.mood >= 4.5).map((m) => m.date),
     topStressors: countTags(days, (s) => s.stressors),
     topPositives: countTags(days, (s) => s.positives),
-    series: days.map((d) => ({ date: d.date, mood: d.signals.mood, energyAfternoon: d.signals.energyAfternoon })),
+    series: days.map((d) => ({ date: d.date, mood: d.signals.mood, energy: dayEnergy(d.signals) })),
   }
 }
 

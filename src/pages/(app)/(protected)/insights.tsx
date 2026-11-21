@@ -95,7 +95,7 @@ export default function InsightsPage() {
       Array.from({ length: days }, (_, i) => {
         const date = addDays(start, i)
         const s = stats.series.find((p) => p.date === date)
-        return { date, mood: s?.mood ?? null, energy: s?.energyAfternoon ?? null }
+        return { date, mood: s?.mood ?? null, energy: s?.energy ?? null }
       }),
     [days, start, stats],
   )
@@ -166,16 +166,17 @@ export default function InsightsPage() {
           </section>
         </div>
       )}
-      <div className="max-w-3xl">
+      {/* Everything below the calendar shares its full width. */}
+      <div>
         <div className="mt-14 border-t border-border pt-10">
           <HabitsSection />
         </div>
 
       <div className="mt-14 flex flex-wrap items-end justify-between gap-4 border-t border-border pt-10">
         <div>
-          <h2 className="font-display text-2xl font-light text-foreground">What Hearth is noticing</h2>
+          <h2 className="font-display text-2xl font-light text-foreground">Energy &amp; mood</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {stats.daysLogged} of the last {days} days written · {formatDay(start)} – {formatDay(today)}
+            How your days felt, and how much energy they had · {formatDay(start, { month: 'short', day: 'numeric' })} – {formatDay(today, { month: 'short', day: 'numeric' })}
           </p>
         </div>
         <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1" role="radiogroup" aria-label="Range">
@@ -213,8 +214,7 @@ export default function InsightsPage() {
           <section className="mt-6" data-testid="patterns">
             <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-              Compared across your own days, not other people. These are hints from a small number of days, not causes —
-              tap a date to read what you wrote.
+              Your own days compared with each other. Hints, not causes; tap a date to read that day.
             </p>
             {patterns.length === 0 ? (
               <p className="mt-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">

@@ -149,12 +149,13 @@ test('sample journal surfaces the lunch → afternoon energy pattern with eviden
   await dayCard.getByRole('button', { name: 'Read entry' }).click()
   await expect(dayCard.locator('[id^="entry-body-"]')).toBeVisible()
 
-  const card = page.locator('[data-pattern-id="lunch:energyAfternoon"]')
+  // Energy & mood: judged on the whole day, not one part of it.
+  const card = page.locator('[data-pattern-id="lunch:energy"]')
   await expect(card).toBeVisible({ timeout: 20_000 })
-  await expect(card).toContainText('skipped or delayed lunch')
-  await expect(card).toContainText('1.8/5')
-  // Four evidence chips, each linking back to the journal day.
-  await expect(card.getByRole('link')).toHaveCount(4)
+  await expect(card).toContainText('skipped or delayed lunch, your energy averaged 2.3/5 vs 3.5/5')
+  // Evidence chips, each linking back to the journal day.
+  await expect(card.getByRole('link')).toHaveCount(3)
+  await expect(page.locator('[data-testid="patterns"]')).not.toContainText('afternoon energy')
 
   // Habits fill in from entries — no check-off.
   await page.goto('/habits')
@@ -205,7 +206,7 @@ test('after an entry: memory link and a nudge from your own pattern, nothing mor
 
   // The nudge is code over the sample journal's patterns: deterministic once lunch=skipped is extracted.
   const nudge = page.getByTestId('nudge')
-  await expect(nudge).toHaveAttribute('data-pattern-id', 'lunch:energyAfternoon')
+  await expect(nudge).toHaveAttribute('data-pattern-id', 'lunch:mood')
   // One line to act on, no analysis paragraph.
   await expect(nudge).toContainText('Set an 11:45 alarm')
   await expect(nudge).not.toContainText('averaged')

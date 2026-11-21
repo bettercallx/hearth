@@ -49,14 +49,15 @@
 
   --hearth-mood-line: #a4492a;
   --hearth-energy-line: #4f6d96;
-  /* Mood, earthy and soft: sand and camel for heavy days, warm cream for okay,
-   * grass greens for good ones. Gentle by choice, so neighbouring steps sit
-   * close; every cell also carries its mood word (title, aria-label, legend). */
-  --hearth-mood-1: #c4a07a;
-  --hearth-mood-2: #d4b896;
-  --hearth-mood-3: #e0d5c0;
-  --hearth-mood-4: #b8ccaa;
-  --hearth-mood-5: #8bb07a;
+  /* Mood, earthy: sand and camel for heavy days, cream for okay, grass greens
+   * for good ones, each end deeper. Stepped so neighbours stay apart (validated:
+   * colour-vision ΔE ≥ 14, normal vision ≥ 15 on this paper); every cell also
+   * carries its mood word (title, aria-label, legend). */
+  --hearth-mood-1: #a97a4c;
+  --hearth-mood-2: #d3b48c;
+  --hearth-mood-3: #f0e9dc;
+  --hearth-mood-4: #a3c78d;
+  --hearth-mood-5: #5f9152;
 }
 
 /* Handwriting for the exchange diary: a ballpoint on a school notebook. */
