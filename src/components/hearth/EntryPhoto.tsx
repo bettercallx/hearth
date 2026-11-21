@@ -42,6 +42,8 @@ export function EntryPhoto({
   }, [entryId, photo?.key])
 
   if (!photo || (!photo.key && !photo.demo)) return null
+  // A bundled sample image that no longer ships (older samples): show nothing rather than a broken frame.
+  if (photo.demo && failed) return null
   return (
     <figure
       data-testid="entry-photo"

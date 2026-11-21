@@ -7,7 +7,7 @@
  *   deadlines on hard days, getting outside on good ones, late screens →
  *   groggy mornings) and noise that should NOT surface as a pattern.
  * - DEMO_FRIEND_ENTRIES / replies: an exchange diary with Mia, a freelance
- *   illustrator, including sketches and replies both ways.
+ *   illustrator, with replies both ways.
  */
 
 import type { DaySignals } from './signals'
@@ -180,21 +180,19 @@ export const DEMO_FRIEND_ENTRIES: DemoFriendEntry[] = [
   },
   {
     day: 5,
-    text: "A collector wants three more revisions on a commission I thought was done. I said yes because I always say yes. Here's what I'm doing instead of replying.",
+    text: 'A collector wants three more revisions on a commission I thought was done. I said yes because I always say yes. Spent the evening repotting my plants instead of answering.',
     mood: 2,
     moodTags: ['tired', 'stuck'],
-    photo: '/demo/plant.svg',
   },
   {
     day: 8,
     text: 'Finally sent the cover sketch to the bakery client!! Three hours at the café with my phone in my bag. Real flow, first time this week. Then a call ate the afternoon and I forgot lunch AGAIN.',
     mood: 4,
     moodTags: ['proud', 'scattered'],
-    photo: '/demo/cake.svg',
   },
   {
     day: 10,
-    text: 'Sold two prints at the Sunday market and a kid asked if I drew the cat on the tote. I did.',
+    text: 'Sold two prints at the Sunday market! A kid asked if I drew the cat on the tote bag. I said yes and she made her mum buy one. Best review I have ever had.',
     mood: 5,
     moodTags: ['happy', 'seen'],
   },

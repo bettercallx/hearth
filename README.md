@@ -44,7 +44,7 @@ Built on the [DeepSpace SDK](https://docs.deep.space).
 
 One button (Today's first-run card, Settings, or the empty Exchange page) loads two
 weeks of a freelance designer's journal plus an exchange diary with **Mia**, a
-sample friend, with sketches and replies both ways, so one account shows every
+sample friend, with replies both ways, so one account shows every
 feature. Mia is not an account: her rows carry the id `demo-mia`, are written only
 by `seedDemo`, are skipped by the weekly letters, and `clearDemo` removes them.
 

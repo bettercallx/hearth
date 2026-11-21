@@ -416,18 +416,17 @@ test('exchange diary photos: taped in for a friend, private to the two of you, g
   await bob.page.getByTestId('accept-invite').getByRole('button', { name: 'Accept' }).click()
   const bobAuth = await bobToken
 
-  // The sample friend's sketches are in Alice's notebook with Mia.
+  // The sample friend's pages are in Alice's notebook with Mia.
   await alice.page.reload()
   await alice.page.getByTestId('friend-name').filter({ hasText: 'Mia' }).click()
-  // One sheet per week, newest first: this week holds the cake sketch…
+  // One sheet per week, newest first: this week holds the cover-sketch page…
   await expect(alice.page.getByTestId('week-range')).toContainText('this week')
-  await expect(alice.page.locator('[data-testid="entry-photo"] img[src="/demo/cake.svg"]')).toBeVisible({ timeout: 15_000 })
-  const dates = await alice.page.locator('[data-testid="shared-entry"]').evaluateAll((els) => els.length)
-  expect(dates).toBeGreaterThan(1)
-  // …and the week before holds the plant.
+  await expect(alice.page.getByText('Finally sent the cover sketch')).toBeVisible({ timeout: 15_000 })
+  expect(await alice.page.locator('[data-testid="shared-entry"]').count()).toBeGreaterThan(1)
+  // …and the week before holds the repotting page, and not this week's.
   await alice.page.getByRole('button', { name: '← earlier week' }).click()
-  await expect(alice.page.locator('[data-testid="entry-photo"] img[src="/demo/plant.svg"]')).toBeVisible()
-  await expect(alice.page.locator('[data-testid="entry-photo"] img[src="/demo/cake.svg"]')).toHaveCount(0)
+  await expect(alice.page.getByText('repotting my plants')).toBeVisible()
+  await expect(alice.page.getByText('Finally sent the cover sketch')).toHaveCount(0)
   await alice.page.getByRole('button', { name: 'later week →' }).click()
 
   // Alice writes a page with a photo in Bob's notebook.
