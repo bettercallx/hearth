@@ -204,7 +204,8 @@ test('never miss twice: a slipped habit yesterday gets a gentle line before writ
   await page.getByTestId('save-habit').click()
   await expect(page.getByTestId('habit-card').filter({ hasText: name })).toBeVisible()
 
-  await writeEntry(page, `__test-${Date.now()}__ Yesterday I completely skipped lunch, no time at all.`, { daysAgo: 1 })
+  // Written about yesterday, in that day's own words ("today"), so the skipped lunch belongs to that day.
+  await writeEntry(page, `__test-${Date.now()}__ Skipped lunch completely today, no time at all. Ate nothing until dinner.`, { daysAgo: 1 })
   await expect(page.getByTestId('reflection')).toBeVisible({ timeout: 60_000 })
 
   await page.goto('/home')

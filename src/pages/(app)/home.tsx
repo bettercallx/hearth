@@ -1,4 +1,4 @@
-/* home pattern: product-preview-first — today's notebook page is the home; signed-out visitors see the same page with a sign-in invitation */
+/* home pattern: product-preview-first — the desk: Hearth's page in the middle, Looking back and the exchange diary as windows beside it; signed-out visitors see Hearth's page with a sign-in invitation */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -6,6 +6,8 @@ import { AuthOverlay, useAuth, useMutations, useQuery } from 'deepspace'
 import { Mic, Square, ArrowRight, Users, Lock, Mail } from 'lucide-react'
 import { Button, Textarea, useToast } from '@/components/ui'
 import { VoiceWave } from '@/components/hearth/VoiceWave'
+import { ExchangeWindow, LookingBackWindow } from '@/components/hearth/DeskWindows'
+import { cn } from '@/lib/utils'
 import { CrisisCard, EntryCard, SpeakButton, Tag } from '@/components/hearth/bits'
 import { callAction, formatDay, localToday, transcribe } from '@/lib/client'
 import { useRecorder } from '@/lib/useRecorder'
@@ -52,7 +54,46 @@ function DateLine() {
 
 export default function HomePage() {
   const { isSignedIn } = useAuth()
-  return isSignedIn ? <Companion /> : <SignedOutPreview />
+  return isSignedIn ? <Desk /> : <SignedOutPreview />
+}
+
+/**
+ * Three windows on a desk. While you write or talk, the side windows fade
+ * and blur: the middle page is private, and it should feel that way. They
+ * come back once Hearth has answered.
+ */
+function Desk() {
+  const [focused, setFocused] = useState(false)
+  const side = cn(
+    'transition-[opacity,filter] duration-500',
+    focused && 'pointer-events-none opacity-25 blur-[2px] lg:opacity-15',
+  )
+  return (
+    <div
+      data-testid="desk"
+      data-focused={focused}
+      className="mx-auto grid max-w-[1440px] gap-5 px-4 pb-10 sm:px-6 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_minmax(0,20rem)] xl:grid-cols-[18.5rem_minmax(0,1fr)_21.5rem]"
+    >
+      <div className={cn('order-3 lg:order-1', side)} aria-hidden={focused || undefined}>
+        <LookingBackWindow className="lg:sticky lg:top-2 lg:max-h-[calc(100vh-6rem)]" />
+      </div>
+      <section
+        aria-label="Hearth"
+        className="relative order-1 rounded-[22px] bg-card px-5 py-8 shadow-[0_1px_2px_rgba(43,38,34,0.06),0_18px_40px_-22px_rgba(43,38,34,0.3)] sm:px-10 sm:py-12 lg:order-2 lg:min-h-[calc(100vh-6rem)]"
+      >
+        <span
+          data-testid="private-badge"
+          className="absolute right-5 top-5 inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[11px] text-muted-foreground sm:right-7 sm:top-7"
+        >
+          <Lock className="h-3 w-3" aria-hidden /> {focused ? 'Just you and Hearth' : 'Only you'}
+        </span>
+        <Companion embedded onFocusChange={setFocused} />
+      </section>
+      <div className={cn('order-2 lg:order-3', side)} aria-hidden={focused || undefined}>
+        <ExchangeWindow className="min-h-[22rem] lg:sticky lg:top-2 lg:max-h-[calc(100vh-6rem)]" />
+      </div>
+    </div>
+  )
 }
 
 function SignedOutPreview() {
@@ -102,7 +143,7 @@ function LetterNotice() {
   )
 }
 
-function Companion() {
+function Companion({ embedded = false, onFocusChange }: { embedded?: boolean; onFocusChange?: (focused: boolean) => void }) {
   const today = localToday()
   // Recent entries feed today's list, the reflection, and Hearth's nudges.
   const { records: recent, status: recentStatus } = useMyEntries({ orderBy: 'createdAt', orderDir: 'desc', limit: 200 })
@@ -221,10 +262,15 @@ function Companion() {
 
   const busy = phase !== 'compose' && phase !== 'recording'
 
+  // Writing, talking, or waiting for Hearth: the desk around this page steps back.
+  const focused = phase !== 'compose' || typing || !!text
+  useEffect(() => onFocusChange?.(focused), [focused, onFocusChange])
+
   return (
-    <div className="mx-auto max-w-2xl px-6 pb-24 pt-12 sm:pt-20">
+    <div className={embedded ? 'mx-auto max-w-2xl' : 'mx-auto max-w-2xl px-6 pb-24 pt-12 sm:pt-20'}>
       <DateLine />
-      <LetterNotice />
+      {/* On the desk the letter lives in the Looking back window. */}
+      {!embedded && <LetterNotice />}
       <h1 className="mt-4 font-display text-4xl font-light leading-tight text-foreground sm:text-5xl">
         {latest ? 'Thank you for telling me.' : prompt}
       </h1>

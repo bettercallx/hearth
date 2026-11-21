@@ -8,14 +8,13 @@
  * email is the credential the session was opened with.
  */
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AuthOverlay, useAuthProfileReady, signOut } from 'deepspace'
-import { ChevronDown, LogOut, Menu, Settings, X } from 'lucide-react'
+import { CalendarDays, ChevronDown, Home, LogOut, NotebookPen, Settings } from 'lucide-react'
 import { APP_NAME } from '../constants'
 import type { Role } from '../constants'
 import { nav } from '../nav'
-import { cn } from '../lib/utils'
 import {
   Avatar,
   AvatarFallback,
@@ -32,16 +31,10 @@ export default function Navigation() {
   const { isLoaded, isSignedIn, user, userLoading } = useAuthProfileReady({ requireUser: true })
   const location = useLocation()
   const navigate = useNavigate()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
 
   const profileReady = !isSignedIn || (!userLoading && !!user)
   const userRole = (user?.role ?? 'anonymous') as Role | 'anonymous'
-
-  // Close the mobile menu when navigating
-  useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [location.pathname])
 
   const visibleNav = nav.filter((item) => {
     if (item.devOnly && !import.meta.env.DEV) return false
@@ -50,33 +43,24 @@ export default function Navigation() {
     if (userRole === 'admin') return true
     return item.roles.includes(userRole as Role)
   })
-
-  const navLink = (item: (typeof nav)[number]) => {
-    const active = location.pathname.startsWith(item.path)
-    return (
-      <Link
-        key={item.path}
-        to={item.path}
-        aria-current={active ? 'page' : undefined}
-        className={cn(
-          'px-3 py-1.5 text-sm',
-          active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
-        )}
-      >
-        {item.label}
-      </Link>
-    )
-  }
+  // Away from the desk, say where you are; the wordmark always leads back.
+  const here = visibleNav.find((item) => location.pathname.startsWith(item.path))
 
   return (
     <>
-      <nav data-testid="app-navigation" className="border-b border-border bg-background">
-        <div className="mx-auto flex h-12 max-w-7xl items-center gap-4 px-4">
-          <Link to="/home" className="font-display text-xl text-foreground">
+      <nav data-testid="app-navigation" className="bg-background">
+        <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-5 sm:px-8">
+          <Link to="/home" className="font-display text-2xl text-foreground">
             {APP_NAME}
           </Link>
-
-          <div className="hidden items-center md:flex">{visibleNav.map(navLink)}</div>
+          {here && (
+            <>
+              <span aria-hidden className="text-muted-foreground/60">/</span>
+              <span aria-current="page" className="text-sm text-muted-foreground">
+                {here.label}
+              </span>
+            </>
+          )}
 
           <div className="flex-1" />
 
@@ -95,7 +79,7 @@ export default function Navigation() {
                     aria-label="Account menu"
                     className="group flex items-center gap-2 rounded-full border border-border bg-card/60 py-1 pl-1 pr-2.5 text-sm transition-colors hover:bg-card"
                   >
-                    <Avatar className="h-6 w-6 ring-1 ring-inset ring-border">
+                    <Avatar className="h-7 w-7 ring-1 ring-inset ring-border">
                       <AvatarImage src={user.imageUrl ?? undefined} referrerPolicy="no-referrer" />
                       <AvatarFallback className="text-[11px]">
                         {(user.name?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
@@ -127,10 +111,17 @@ export default function Navigation() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate('/settings')}>
-                  <Settings aria-hidden />
-                  Settings
+                <DropdownMenuItem onClick={() => navigate('/home')}>
+                  <Home aria-hidden />
+                  Hearth
                 </DropdownMenuItem>
+                {visibleNav.map((item) => (
+                  <DropdownMenuItem key={item.path} onClick={() => navigate(item.path)}>
+                    {item.path === '/settings' ? <Settings aria-hidden /> : item.path === '/exchange' ? <NotebookPen aria-hidden /> : <CalendarDays aria-hidden />}
+                    {item.label}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => signOut()}>
                   <LogOut aria-hidden />
                   Sign out
@@ -146,22 +137,7 @@ export default function Navigation() {
               Sign in
             </button>
           )}
-
-          <button
-            className="inline-flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-foreground md:hidden"
-            onClick={() => setMobileMenuOpen((prev) => !prev)}
-            aria-label="Toggle menu"
-            aria-expanded={mobileMenuOpen}
-          >
-            {mobileMenuOpen ? <X className="h-4 w-4" aria-hidden /> : <Menu className="h-4 w-4" aria-hidden />}
-          </button>
         </div>
-
-        {mobileMenuOpen && (
-          <div className="flex flex-col border-t border-border px-2 py-2 md:hidden">
-            {visibleNav.map(navLink)}
-          </div>
-        )}
       </nav>
 
       {showAuthModal && <AuthOverlay onClose={() => setShowAuthModal(false)} />}

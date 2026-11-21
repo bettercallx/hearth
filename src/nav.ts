@@ -1,9 +1,10 @@
 /**
  * Navigation Config
  *
- * Add one entry per nav item. Routes are handled by generouted
- * (file-based routing in src/pages/), this just controls what
- * appears in the navigation bar.
+ * Hearth has no tab bar: the home is the desk (Hearth in the middle, Looking
+ * back and the exchange diary as windows beside it). These are the full-page
+ * views a window opens; they show as a breadcrumb next to the wordmark and in
+ * the account menu.
  */
 
 import type { Role } from './constants'
@@ -16,11 +17,9 @@ export interface NavItem {
 }
 
 export const nav: NavItem[] = [
-  { path: '/home', label: 'Today' },
   { path: '/insights', label: 'Looking back' },
-  { path: '/exchange', label: 'Exchange' },
-  // Settings lives in the account menu to keep the bar short.
+  { path: '/exchange', label: 'Exchange diary' },
+  { path: '/settings', label: 'Settings' },
   // The /api-status debug page still exists — add
   // `{ path: '/api-status', label: 'API Status', devOnly: true }` to surface it.
-  // ── Features add nav items below this line ──
 ]
