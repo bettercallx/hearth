@@ -149,7 +149,16 @@ test('sample journal surfaces the lunch → afternoon energy pattern with eviden
   await dayCard.getByRole('button', { name: 'Read entry' }).click()
   await expect(dayCard.locator('[id^="entry-body-"]')).toBeVisible()
 
-  // Energy & mood: judged on the whole day, not one part of it.
+  // Energy & mood: a grid of days by time of day, plus energy by time of day.
+  await expect(page.getByTestId('day-rhythm')).toBeVisible()
+  await expect(page.getByTestId('energy-by-part').locator('li')).toHaveCount(3)
+  // A low point is named only when one part of the day is clearly lower.
+  await expect(page.getByTestId('energy-by-part')).toContainText(/(Morning|Afternoon|Evening)s are your low point|fairly even across the day/)
+
+  // One pattern shows; the rest fold away until asked for.
+  await expect(page.getByTestId('pattern-card')).toHaveCount(1)
+  await page.getByTestId('more-patterns').click()
+  // Patterns judge the whole day, not one part of it.
   const card = page.locator('[data-pattern-id="lunch:energy"]')
   await expect(card).toBeVisible({ timeout: 20_000 })
   await expect(card).toContainText('skipped or delayed lunch, your energy averaged 2.3/5 vs 3.5/5')
@@ -178,6 +187,8 @@ test('correcting a mood updates the calendar and the patterns, live', async ({ u
   await page.goto(`/insights?day=${day}`)
   const square = page.locator(`button[data-date="${day}"]`)
   const pattern = page.locator('[data-pattern-id="lunch:mood"]')
+  // Unfold all patterns so this one stays in view even if a mood change reorders them.
+  await page.getByTestId('more-patterns').click({ timeout: 20_000 })
   await expect(pattern).toBeVisible({ timeout: 20_000 })
   const before = await pattern.innerText()
   const card = page.getByTestId('day-panel').getByTestId('entry-card').first()

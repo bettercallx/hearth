@@ -58,6 +58,14 @@
   --hearth-mood-3: #f0e9dc;
   --hearth-mood-4: #a3c78d;
   --hearth-mood-5: #5f9152;
+
+  /* Energy is magnitude: one blue, light to dark (OKLab L 0.94 → 0.47, evenly
+   * stepped), so it never competes with the mood colours. */
+  --hearth-energy-1: #e4eaf3;
+  --hearth-energy-2: #c3d1e6;
+  --hearth-energy-3: #93aed3;
+  --hearth-energy-4: #5d83ba;
+  --hearth-energy-5: #365a8f;
 }
 
 /* Handwriting for the exchange diary: a ballpoint on a school notebook. */

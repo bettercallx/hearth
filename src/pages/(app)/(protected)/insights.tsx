@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { useMutations, useQuery, useUser } from 'deepspace'
 import { markLetterSeen } from '@/lib/letters'
-import { Sparkles, Plus, Check, Info } from 'lucide-react'
+import { Sparkles, Plus, Check, ChevronDown } from 'lucide-react'
 import { Button, ConfirmModal, buttonVariants, useToast } from '@/components/ui'
-import { MoodChart } from '@/components/hearth/MoodChart'
+import { DayRhythm } from '@/components/hearth/DayRhythm'
 import { FIRST_MONTH, MonthCalendar } from '@/components/hearth/MonthCalendar'
 import { EntryCard } from '@/components/hearth/bits'
 import { HabitsSection } from '@/components/hearth/HabitsSection'
 import { callAction, formatDay, localToday } from '@/lib/client'
-import { addDays, computeStats, findPatterns, type Confidence, type DayPoint, type Pattern } from '@/lib/patterns'
+import { addDays, computeStats, findPatterns, toDays, type Confidence, type DayPoint, type Pattern } from '@/lib/patterns'
 import { normalizeSignals } from '@/lib/signals'
 import type { Habit, Insight } from '@/lib/types'
 import type { Suggestion } from '@/server/journal-ai'
@@ -90,15 +90,15 @@ export default function InsightsPage() {
   const stats = useMemo(() => computeStats(points), [points])
   const patterns = useMemo(() => findPatterns(points), [points])
 
-  const series = useMemo(
-    () =>
-      Array.from({ length: days }, (_, i) => {
-        const date = addDays(start, i)
-        const s = stats.series.find((p) => p.date === date)
-        return { date, mood: s?.mood ?? null, energy: s?.energy ?? null }
-      }),
-    [days, start, stats],
-  )
+  // One column per day in the range; a day with no entry stays an empty column.
+  const rhythm = useMemo(() => {
+    const merged = new Map(toDays(points).map((d) => [d.date, d.signals]))
+    return Array.from({ length: days }, (_, i) => {
+      const date = addDays(start, i)
+      return { date, signals: merged.get(date) ?? null }
+    })
+  }, [days, start, points])
+  const [showAllPatterns, setShowAllPatterns] = useState(false)
 
   const latest = insights[0] ?? null
   const notes = new Map((latest?.data.patterns ?? []).filter((p) => p.note).map((p) => [p.id, p.note!]))
@@ -206,16 +206,12 @@ export default function InsightsPage() {
         </div>
       ) : (
         <>
-          <section className="mt-6 rounded-2xl border border-border bg-card p-5">
-            <MoodChart points={series} />
+          <section className="mt-6 rounded-2xl border border-border bg-card p-6">
+            <DayRhythm days={rhythm} />
           </section>
 
-          {/* Patterns */}
+          {/* Patterns: the strongest one, the rest folded away */}
           <section className="mt-6" data-testid="patterns">
-            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-              Your own days compared with each other. Hints, not causes; tap a date to read that day.
-            </p>
             {patterns.length === 0 ? (
               <p className="mt-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">
                 {stats.daysLogged < 4
@@ -223,10 +219,22 @@ export default function InsightsPage() {
                   : 'Nothing stands out yet — your days have been fairly even. Keep writing; differences take time to show.'}
               </p>
             ) : (
-              <div className="mt-5 space-y-3">
-                {patterns.map((p) => (
+              <div className="space-y-3">
+                {(showAllPatterns ? patterns : patterns.slice(0, 1)).map((p) => (
                   <PatternCard key={p.id} pattern={p} note={notes.get(p.id)} />
                 ))}
+                {patterns.length > 1 && (
+                  <button
+                    type="button"
+                    data-testid="more-patterns"
+                    onClick={() => setShowAllPatterns((v) => !v)}
+                    aria-expanded={showAllPatterns}
+                    className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    <ChevronDown className={cn('h-4 w-4 transition-transform', showAllPatterns && 'rotate-180')} aria-hidden />
+                    {showAllPatterns ? 'Show less' : `${patterns.length - 1} more ${patterns.length === 2 ? 'pattern' : 'patterns'}`}
+                  </button>
+                )}
               </div>
             )}
           </section>
