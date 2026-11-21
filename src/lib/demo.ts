@@ -194,10 +194,9 @@ export const DEMO_FRIEND_ENTRIES: DemoFriendEntry[] = [
   },
   {
     day: 10,
-    text: 'Sold two prints at the Sunday market and a kid asked if I drew the cat on the tote. I did. Here she is, my studio supervisor.',
+    text: 'Sold two prints at the Sunday market and a kid asked if I drew the cat on the tote. I did.',
     mood: 5,
     moodTags: ['happy', 'seen'],
-    photo: '/demo/cat.svg',
   },
   {
     day: 12,
@@ -231,7 +230,7 @@ export const DEMO_REPLIES: DemoReply[] = [
   { from: 'friend', on: { friend: 2 }, text: 'onigiri in my bag tomorrow, promise' },
   { from: 'friend', on: { mine: 8 }, emoji: '❤️' },
   { from: 'me', on: { friend: 3 }, emoji: '🌱' },
-  { from: 'me', on: { friend: 3 }, text: 'supervisor is doing an excellent job' },
+  { from: 'me', on: { friend: 3 }, text: 'a kid recognising your cat is the best review there is' },
   { from: 'friend', on: { mine: 11 }, text: 'proud of you for going to the gym anyway' },
   { from: 'friend', on: { mine: 13 }, text: 'told you the email would work. laptop closed at 7 here too' },
   { from: 'me', on: { friend: 5 }, text: 'allowed. rest is part of the work.' },

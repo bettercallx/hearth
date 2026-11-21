@@ -91,7 +91,6 @@ function Header({ me, friend, friends, onPick }: { me: string; friend: Friend; f
               {first(displayName(me, getName))} + {first(friend.name)}
             </h1>
           </div>
-          <p className="hidden text-[13px] text-muted-foreground sm:block">exchange diary · do NOT read (unless you're us)</p>
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <button type="button" onClick={() => setInviting((v) => !v)} className="inline-flex items-center gap-1 hover:text-foreground">
