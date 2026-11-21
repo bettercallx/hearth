@@ -37,21 +37,19 @@ Every Sunday Hearth writes you a letter. A month calendar colours each day by mo
 fourteen data points, too few to train. Instead:
 
 - The LLM's job is narrow: it maps free text onto a fixed vocabulary.
-- Plain, unit-tested code does transparent with/without comparisons. It needs at
-  least two days per side and a one-point effect, and labels each finding
+- Plain, unit-tested code does transparent with/without comparisons. It labels each finding
   tentative / emerging / consistent.
-- The LLM only writes words around numbers the code computed. Its pattern ids,
-  dates and habit signals are validated, and anything invented is dropped.
 
 The cost: Hearth misses subtle or multi-factor effects, and correlated habits
 can show up as separate findings (lunch and getting outside often happen on the
-same good days). The UI says plainly that these are hints, not causes. The
-benefit: every claim is explainable and traceable to your own entries.
+same good days). The UI says plainly that these are hints, not causes. 
+
+The benefit: every claim is explainable and traceable to your own entries.
 
 A second tradeoff: privacy over admin convenience. The app owner cannot read
 users' journals.
 
-**What the agent did.** Claude Code (Opus) did the following:
+**What the agent did.** Claude Code did the following:
 
 - Read the DeepSpace docs and scaffolded the app.
 - Designed the schemas, the RBAC, and the signal vocabulary.
@@ -68,8 +66,15 @@ users' journals.
   tokens used up the token limit; pattern overlap and overclaiming; cron writes
   restricted to admins; tests passing on stale data.
 
-**What I verified myself.
+**What I directed.**
 
+- [ x ] Read the DeepSpace docs and other repos
+- [ x ] Chose the product direction: a journal for freelancers who work alone,
+  grounded in Atomic Habits
+- [ x ] Decided the analysis approach: explainable statistics over black-box ML
+- [ x ] cut timeline view, voice reply, iWatch integration, and photo collage to keep the core path
+  finished.
+- [ x ] Reviewed the generated code step by step.
 - [ x ] Recorded a real voice entry on my laptop mic. Transcription and reflection were sensible.
 - [ x ] Loaded the sample journal. The patterns match what I'd expect from reading the entries.
 - [ x ] Asked for a letter. The suggestions point at real patterns and dates.
