@@ -8,9 +8,9 @@ import { EntryPhoto } from './EntryPhoto'
 import { ConfirmModal, Popover, PopoverContent, PopoverTrigger, useToast } from '@/components/ui'
 import { EMPTY_SIGNALS } from '@/lib/signals'
 
-/** Cool dusk for low days, warming to sunlight for good ones (theme tokens). */
+/** Purple for heavy days, warm gray for okay, green for good ones (theme tokens). */
 const MOOD_COLORS = [1, 2, 3, 4, 5].map((n) => `var(--hearth-mood-${n})`)
-const MOOD_WORDS = ['very low', 'low', 'okay', 'good', 'very good']
+const MOOD_WORDS = ['rough', 'low', 'okay', 'good', 'great']
 
 export function moodColor(mood: number | null | undefined) {
   if (mood == null) return 'var(--color-muted)'

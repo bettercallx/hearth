@@ -49,11 +49,14 @@
 
   --hearth-mood-line: #a4492a;
   --hearth-energy-line: #4f6d96;
-  --hearth-mood-1: #5f72a0;
-  --hearth-mood-2: #8f87b0;
-  --hearth-mood-3: #b7a691;
-  --hearth-mood-4: #d58d4e;
-  --hearth-mood-5: #d9a63c;
+  /* Mood is diverging: purple for heavy days, warm gray for okay, green for
+   * good ones, each arm darker toward its extreme (PRGn-style; validated for
+   * colour-vision deficiency and normal-vision separation on this paper). */
+  --hearth-mood-1: #6b4c9a;
+  --hearth-mood-2: #a58bd0;
+  --hearth-mood-3: #d9d2c6;
+  --hearth-mood-4: #74c086;
+  --hearth-mood-5: #2e8549;
 }
 
 /* Handwriting for the exchange diary: a ballpoint on a school notebook. */

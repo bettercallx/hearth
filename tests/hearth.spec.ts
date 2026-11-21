@@ -178,8 +178,8 @@ test('correcting a mood updates the calendar and the patterns, live', async ({ u
   const card = page.getByTestId('day-panel').getByTestId('entry-card').first()
 
   await card.getByTestId('mood-picker').click()
-  await page.getByRole('button', { name: 'Set mood to very good' }).click()
-  await expect(square).toHaveAttribute('aria-label', /very good/)
+  await page.getByRole('button', { name: 'Set mood to great' }).click()
+  await expect(square).toHaveAttribute('aria-label', /great/)
   await expect.poll(() => pattern.innerText()).not.toBe(before)
 
   // Put it back so the sample journal stays as designed.

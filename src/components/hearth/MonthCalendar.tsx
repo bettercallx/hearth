@@ -126,7 +126,7 @@ export function MonthCalendar({
                 className={cn(
                   'absolute left-1.5 top-1 tabular-nums',
                   has
-                    ? mood !== null && mood < 2.5
+                    ? mood !== null && (mood < 1.5 || mood >= 4.5)
                       ? 'text-white/90'
                       : 'text-foreground/70'
                     : 'text-muted-foreground/70',
@@ -139,12 +139,14 @@ export function MonthCalendar({
         })}
       </div>
 
-      <div className="mt-3 flex items-center justify-end gap-1.5 text-[11px] text-muted-foreground">
-        <span>Low</span>
+      {/* Every step named: colour is never the only way to read a day. */}
+      <div className="mt-3 flex items-start justify-end gap-2.5 text-[11px] text-muted-foreground" aria-label="Mood colours">
         {[1, 2, 3, 4, 5].map((m) => (
-          <span key={m} className="h-3 w-3 rounded-sm" style={{ background: moodColor(m) }} />
+          <span key={m} className="flex flex-col items-center gap-1">
+            <span className="h-3 w-5 rounded-sm" style={{ background: moodColor(m) }} />
+            {moodWord(m)}
+          </span>
         ))}
-        <span>Good</span>
       </div>
     </section>
   )
