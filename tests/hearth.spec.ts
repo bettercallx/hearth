@@ -61,6 +61,16 @@ async function openInvite(page: Page) {
   return invite
 }
 
+/** The record id of the notebook page containing `marker`, once it appears. */
+async function pageIdByText(page: Page, marker: string) {
+  const card = page.locator('[data-testid="shared-entry"]').filter({ hasText: marker })
+  await expect(card).toHaveCount(1, { timeout: 20_000 })
+  return (await card.getAttribute('data-entry-id'))!
+}
+
+/** Notebook pages each test wrote (id + friend tab), torn out in afterEach. */
+const pagesMade = new Map<Page, { id: string; friend: string }[]>()
+
 /** Habits each test made, by page; deleted in afterEach even when an assertion failed. */
 const habitsMade = new Map<Page, string[]>()
 
@@ -81,6 +91,22 @@ async function deleteHabits(page: Page, match: string) {
 test.afterEach(async () => {
   for (const [page, names] of habitsMade) for (const name of names) await deleteHabits(page, name)
   habitsMade.clear()
+  for (const [page, pages] of pagesMade) {
+    for (const { id, friend } of pages) {
+      await page.goto('/exchange')
+      const tab = page.getByTestId('friend-name').filter({ hasText: friend })
+      if (await tab.and(page.locator('button')).count()) await tab.click()
+      // Wait for the notebook (or its empty state) before deciding the page is already gone.
+      await expect(page.locator('[data-testid="shared-entry"], [data-testid="create-invite"], [data-testid="invite-link"]').first()).toBeVisible({ timeout: 15_000 })
+      const card = page.locator(`[data-testid="shared-entry"][data-entry-id="${id}"]`)
+      if (!(await card.count())) continue
+      await card.hover()
+      await card.getByTestId('tear-out').click()
+      await page.getByRole('button', { name: 'Tear out', exact: true }).click()
+      await expect(card).toHaveCount(0)
+    }
+  }
+  pagesMade.clear()
   for (const [page, ids] of created) {
     await page.unroute('**/api/actions/analyzeEntry').catch(() => {})
     for (const { id, date } of ids) {
@@ -321,12 +347,16 @@ test('exchange diary: pair by link, share selectively, reply live, unpair revoke
   await card.getByRole('button', { name: 'Send reply' }).click()
   await expect(card.getByTestId('replies')).toContainText('Glad dinner helped')
 
-  // Alice sees Bob's reply on her own entry, live.
+  // Alice sees Bob's reply in their notebook, live. (Looking back stays hers alone: no replies there.)
+  await alice.page.goto('/exchange')
+  await alice.page.getByTestId('friend-name').filter({ hasText: 'Bob' }).click()
+  const inNotebook = alice.page.locator(`[data-testid="shared-entry"][data-entry-id="${sharedId}"]`)
+  await expect(inNotebook.getByTestId('replies')).toContainText('🤗', { timeout: 15_000 })
+  await expect(inNotebook.getByTestId('replies')).toContainText('Glad dinner helped')
   await alice.page.goto(`/insights?day=${today()}`)
   const own = alice.page.locator(`[data-testid="entry-card"][data-entry-id="${sharedId}"]`)
-  await expect(own.getByTestId('shared-badge')).toContainText('Bob', { timeout: 15_000 })
-  await expect(own.getByTestId('replies')).toContainText('🤗')
-  await expect(own.getByTestId('replies')).toContainText('Glad dinner helped')
+  await expect(own).toBeVisible({ timeout: 15_000 })
+  await expect(own.getByTestId('replies')).toHaveCount(0)
 
   await bob.page.goto(`/insights?day=${today()}`)
   await expect(bob.page.getByTestId('day-panel')).toBeVisible()
@@ -340,9 +370,9 @@ test('exchange diary: pair by link, share selectively, reply live, unpair revoke
   await expect(bob.page.getByTestId('friend-name')).toHaveCount(0, { timeout: 15_000 })
   await expect(bob.page.getByText(sharedMarker)).toHaveCount(0, { timeout: 15_000 })
 
+  // A journal entry that was shared stays in Alice's journal.
   await alice.page.goto(`/insights?day=${today()}`)
   await expect(own).toBeVisible({ timeout: 15_000 })
-  await expect(own.getByTestId('shared-badge')).not.toContainText('Bob')
 })
 
 test('exchange diary photos: taped in for a friend, private to the two of you, gone on unpair', async ({ users }) => {
@@ -369,11 +399,13 @@ test('exchange diary photos: taped in for a friend, private to the two of you, g
   const marker = `__test-${Date.now()}__ photo page`
   await alice.page.getByTestId('page-input').fill(`${marker} Today's thumbnail sketch!`)
   await alice.page.getByTestId('photo-input').setInputFiles('tests/fixtures/sketch.png')
-  const analyzed = alice.page.waitForRequest((r) => r.url().endsWith('/api/actions/analyzeEntry'))
   await alice.page.getByTestId('pass-notebook').click()
-  const call = await analyzed
-  const pageId = (JSON.parse(call.postData() ?? '{}') as { entryId: string }).entryId
-  created.set(alice.page, [...(created.get(alice.page) ?? []), { id: pageId, date: today() }])
+  const pageId = await pageIdByText(alice.page, marker)
+  pagesMade.set(alice.page, [{ id: pageId, friend: 'Bob' }])
+  // A notebook page is not a journal entry: it stays out of Looking back.
+  await alice.page.goto(`/insights?day=${today()}`)
+  await expect(alice.page.getByTestId('day-panel')).toBeVisible({ timeout: 15_000 })
+  await expect(alice.page.getByText(marker)).toHaveCount(0)
 
   // Bob sees it in his notebook, the photo fetched through the access check.
   await bob.page.goto('/exchange')
@@ -389,6 +421,9 @@ test('exchange diary photos: taped in for a friend, private to the two of you, g
   await bob.page.getByRole('button', { name: 'Unpair', exact: true }).last().click()
   await expect(page).toHaveCount(0, { timeout: 15_000 })
   expect((await bob.page.request.get(`/api/photos/${pageId}`, { headers: { authorization: bobAuth } })).status()).toBe(404)
+  // The notebook went with the pairing: Alice's page in it is gone too, nothing left to tear out.
+  await alice.page.goto('/exchange')
+  await expect(alice.page.locator(`[data-entry-id="${pageId}"]`)).toHaveCount(0, { timeout: 15_000 })
 })
 
 test('an iPhone photo (HEIC named .JPG) is converted and shows in the notebook', async ({ users }) => {
@@ -404,13 +439,13 @@ test('an iPhone photo (HEIC named .JPG) is converted and shows in the notebook',
   await expect(preview).toBeVisible({ timeout: 30_000 })
   expect(await preview.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0)
 
+  const marker = (await page.getByTestId('page-input').inputValue()).slice(0, 24)
   const upload = page.waitForResponse((r) => r.url().includes('/api/files/upload'))
-  const analyzed = page.waitForRequest((r) => r.url().endsWith('/api/actions/analyzeEntry'))
   await page.getByTestId('pass-notebook').click()
   // What's stored is the JPEG, not the original HEIC.
   expect(((await (await upload).json()) as { key: string }).key).toMatch(/photo\.jpg$/)
-  const id = (JSON.parse((await analyzed).postData() ?? '{}') as { entryId: string }).entryId
-  created.set(page, [...(created.get(page) ?? []), { id, date: today() }])
+  const id = await pageIdByText(page, marker)
+  pagesMade.set(page, [{ id, friend: 'Mia' }])
 
   const img = page.locator(`[data-entry-id="${id}"] [data-testid="entry-photo"] img`)
   await expect(img).toHaveAttribute('src', /^blob:/, { timeout: 15_000 })

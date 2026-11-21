@@ -11,6 +11,7 @@ import { writeInsight, type Complete } from './journal-ai'
 export interface EntryRow {
   userId: string
   entryDate: string
+  source?: string
   status?: string
   mood?: number | null
   summary?: string
@@ -30,7 +31,12 @@ export async function buildInsight(
 ): Promise<InsightBuild> {
   const start = addDays(args.end, -(args.days - 1))
   const rows = args.rows.filter(
-    (r) => r.userId === args.userId && r.status === 'analyzed' && r.entryDate >= start && r.entryDate <= args.end,
+    (r) =>
+      r.userId === args.userId &&
+      r.status === 'analyzed' &&
+      r.source !== 'exchange' &&
+      r.entryDate >= start &&
+      r.entryDate <= args.end,
   )
   const points: DayPoint[] = rows.map((r) => ({ date: r.entryDate, signals: normalizeSignals(r.signals) }))
   const stats = computeStats(points)

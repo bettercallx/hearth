@@ -11,10 +11,16 @@ import { DEMO_FRIEND, isDemoUser } from './demo-friend'
 
 type QueryOptions = { where?: Partial<Entry>; orderBy?: string; orderDir?: 'asc' | 'desc'; limit?: number }
 
+/**
+ * Your own journal: your rows only (filtered on the server), minus pages you
+ * wrote in the exchange diary, which belong to the notebook, not to your
+ * record of yourself.
+ */
 export function useMyEntries(options: QueryOptions = {}) {
   const { userId } = useAuth()
-  // The server filters by `where`, so a friend's rows never reach this query.
-  return useQuery<Entry>('entries', { ...options, where: { ...options.where, userId: userId ?? '__none__' } })
+  const result = useQuery<Entry>('entries', { ...options, where: { ...options.where, userId: userId ?? '__none__' } })
+  const records = useMemo(() => result.records.filter((r) => r.data.source !== 'exchange'), [result.records])
+  return { ...result, records }
 }
 
 export interface Friend {

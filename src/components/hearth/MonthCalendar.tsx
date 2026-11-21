@@ -62,7 +62,7 @@ export function MonthCalendar({
     <section data-testid="month-calendar" className="w-full max-w-[26rem]">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-2xl font-light text-foreground">
-          {new Date(y, mo - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+          {new Date(y, mo - 1, 1).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
         </h2>
         <div className="flex items-center gap-1">
           <button

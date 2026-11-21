@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AuthOverlay, useAuth, useMutations, useQuery } from 'deepspace'
-import { Mic, Square, ArrowRight, Users, Lock, Mail } from 'lucide-react'
+import { Mic, Square, ArrowRight, Users, Lock, Mail, Loader2 } from 'lucide-react'
 import { Button, Textarea, useToast } from '@/components/ui'
 import { VoiceWave } from '@/components/hearth/VoiceWave'
 import { ExchangeWindow, LookingBackWindow } from '@/components/hearth/DeskWindows'
@@ -236,10 +236,12 @@ function Companion({ embedded = false, onFocusChange }: { embedded?: boolean; on
   }
 
   const clock = `${Math.floor(recorder.seconds / 60)}:${String(recorder.seconds % 60).padStart(2, '0')}`
+  // The big button narrates listening itself; this line speaks only for the editor's voice button and for Hearth reading.
+  const voiceInEditor = typing || !!text
   const statusLine =
-    phase === 'recording'
+    phase === 'recording' && voiceInEditor
       ? 'Listening…'
-      : phase === 'transcribing'
+      : phase === 'transcribing' && voiceInEditor
         ? 'Catching your words…'
         : phase === 'saving' || phase === 'thinking'
           ? 'Reading what you wrote…'
@@ -256,7 +258,7 @@ function Companion({ embedded = false, onFocusChange }: { embedded?: boolean; on
       {/* On the desk the letter lives in the Looking back window. */}
       {!embedded && <LetterNotice />}
       {/* Right padding keeps the question clear of the "Only you" badge. */}
-      <h1 className="pr-20 font-display text-4xl font-light leading-tight text-foreground sm:pr-28 sm:text-5xl">
+      <h1 className="px-14 text-center font-display text-4xl font-light leading-tight text-foreground sm:px-24 sm:text-5xl">
         {latest ? 'Thank you for telling me.' : prompt}
       </h1>
 
@@ -413,29 +415,44 @@ function Companion({ embedded = false, onFocusChange }: { embedded?: boolean; on
             </div>
           </div>
         ) : (
-          <div className="flex flex-wrap items-center gap-5">
-            {phase === 'recording' ? (
-              <Button
-                size="lg"
-                className="rounded-full px-6"
-                onClick={() => void stopRecording()}
-                aria-label="Stop recording"
-              >
-                <Square className="h-4 w-4" aria-hidden /> Done · {clock}
-              </Button>
-            ) : (
-              <Button
-                size="lg"
-                className="rounded-full px-6"
-                data-testid="mic-button"
-                onClick={() => void startRecording()}
-                disabled={busy || recorder.state === 'unsupported'}
-                loading={phase === 'transcribing'}
-                aria-label="Start talking"
-              >
-                {phase !== 'transcribing' && <Mic className="h-4 w-4" aria-hidden />} Talk
-              </Button>
-            )}
+          /* The big round button is the page's centre of gravity: tap and talk. */
+          <div className="mt-6 flex flex-col items-center gap-4 sm:mt-10">
+            <div className="relative">
+              {/* A soft halo that breathes with your voice while recording. */}
+              <span
+                aria-hidden
+                className="absolute inset-0 rounded-full bg-primary/15 transition-transform duration-100"
+                style={{ transform: `scale(${phase === 'recording' ? 1.18 + (recorder.levels.at(-1) ?? 0) * 0.5 : 1.12})` }}
+              />
+              {phase === 'recording' ? (
+                <button
+                  type="button"
+                  onClick={() => void stopRecording()}
+                  aria-label="Stop recording"
+                  className="relative grid h-28 w-28 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_14px_34px_-12px_rgba(164,73,42,0.7)] transition-transform hover:scale-[1.03] sm:h-32 sm:w-32"
+                >
+                  <Square className="h-8 w-8" aria-hidden />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  data-testid="mic-button"
+                  onClick={() => void startRecording()}
+                  disabled={busy || recorder.state === 'unsupported'}
+                  aria-label="Start talking"
+                  className="relative grid h-28 w-28 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_14px_34px_-12px_rgba(164,73,42,0.7)] transition-transform hover:scale-[1.04] disabled:opacity-60 sm:h-32 sm:w-32"
+                >
+                  {phase === 'transcribing' ? (
+                    <Loader2 className="h-9 w-9 animate-spin" aria-hidden />
+                  ) : (
+                    <Mic className="h-10 w-10" aria-hidden />
+                  )}
+                </button>
+              )}
+            </div>
+            <p className="text-base font-medium text-foreground">
+              {phase === 'recording' ? `Listening · ${clock}` : phase === 'transcribing' ? 'Catching your words…' : 'Tap to talk'}
+            </p>
             {phase !== 'recording' && (
               <button
                 type="button"

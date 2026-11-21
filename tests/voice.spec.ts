@@ -23,7 +23,7 @@ test('speaking an entry transcribes it into the editor', async ({ users }) => {
   const page = alice.page
   await page.goto('/home')
   await page.getByTestId('mic-button').click()
-  await expect(page.getByText(/Listening…/)).toBeVisible()
+  await expect(page.getByText(/Listening/)).toBeVisible()
   await page.waitForTimeout(4000)
   await page.getByRole('button', { name: 'Stop recording' }).click()
   // Transcribed text lands in the editor for review; nothing is saved yet.

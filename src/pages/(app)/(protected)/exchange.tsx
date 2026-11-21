@@ -207,6 +207,7 @@ function Notebook({ me, friend }: { me: string; friend: Friend }) {
                 </div>
               )}
               <PageReplies entryId={p.recordId} entryOwner={p.data.userId ?? ''} me={me} replies={byEntry.get(p.recordId) ?? []} pen={pen} name={name} />
+              {p.data.source === 'exchange' && p.data.userId === me && <TearOut id={p.recordId} />}
             </article>
           )
         })
@@ -349,19 +350,18 @@ function WritePage({ friend }: { friend: Friend }) {
         if (!up.success || !up.key) throw new Error(up.error ?? 'Photo upload failed')
         key = up.key
       }
-      const id = await createConfirmed({
+      // A notebook page, not a journal entry: Looking back and Hearth's analysis leave it out.
+      await createConfirmed({
         text: text.trim(),
         entryDate: localToday(),
-        source: 'text',
+        source: 'exchange',
         status: 'pending',
         sharedWith: [friend.id],
         photo: key ? { key } : null,
       })
       setText('')
       clearPhoto()
-      success(`Passed to ${first}`, 'It’s in your journal too.')
-      // A page is also a journal entry: Hearth reads it like any other.
-      void callAction('analyzeEntry', { entryId: id }).catch(() => {})
+      success(`Passed to ${first}`)
     } catch (e) {
       error('Could not pass the notebook', e instanceof Error ? e.message : undefined)
     } finally {
@@ -434,6 +434,41 @@ function WritePage({ friend }: { friend: Friend }) {
         </button>
       </div>
     </section>
+  )
+}
+
+/** Your own notebook pages can be torn out (deleted for both of you). */
+function TearOut({ id }: { id: string }) {
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const { error } = useToast()
+  return (
+    <>
+      <button
+        type="button"
+        data-testid="tear-out"
+        disabled={busy}
+        onClick={() => setConfirming(true)}
+        className="font-pen text-[22px] text-[#8995a3] opacity-70 hover:text-[#c03a6f] sm:opacity-0 sm:focus-visible:opacity-100 sm:group-hover:opacity-100"
+      >
+        tear out this page
+      </button>
+      <ConfirmModal
+        open={confirming}
+        onClose={() => setConfirming(false)}
+        onConfirm={() => {
+          setConfirming(false)
+          setBusy(true)
+          callAction('tearOut', { entryId: id })
+            .catch((e: unknown) => error('Could not tear it out', e instanceof Error ? e.message : undefined))
+            .finally(() => setBusy(false))
+        }}
+        title="Tear out this page?"
+        description="It's removed from the notebook for both of you."
+        confirmText="Tear out"
+        variant="destructive"
+      />
+    </>
   )
 }
 

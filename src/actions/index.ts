@@ -1,7 +1,8 @@
+import { appFiles } from 'deepspace/worker'
 import type { ActionHandler, ActionTools } from 'deepspace/worker'
 import type { Env } from '../../worker'
 import { DEMO_ENTRIES, DEMO_FRIEND_ENTRIES, DEMO_REPLIES } from '../lib/demo'
-import { DEMO_FRIEND } from '../lib/demo-friend'
+import { DEMO_FRIEND, isDemoUser } from '../lib/demo-friend'
 import { createActionTools } from '../server/action-routes'
 import { addDays } from '../lib/patterns'
 import {
@@ -35,6 +36,7 @@ export function completeVia(tools: ActionTools): Complete {
 
 interface EntryData extends EntryRow {
   text: string
+  photo?: { key?: string; demo?: string } | null
   moodEdited?: boolean | number
   isDemo?: boolean | number
   sharedWith?: string[]
@@ -57,6 +59,7 @@ async function memoryFor(tools: ActionTools, userId: string, date: string, exclu
       (r) =>
         r.recordId !== excludeId &&
         r.data.status === 'analyzed' &&
+        r.data.source !== 'exchange' &&
         !r.data.riskFlag &&
         r.data.entryDate >= from &&
         r.data.entryDate < date,
@@ -71,6 +74,8 @@ const analyzeEntry: ActionHandler<Env> = async ({ userId, params, tools }) => {
   if (!got.success) return { success: false, error: 'Entry not found' }
   const entry = got.data.record
   if (entry.data.userId !== userId) return { success: false, error: 'Entry not found' }
+  // Exchange-diary pages belong to the notebook; Hearth doesn't read them as journal entries.
+  if (entry.data.source === 'exchange') return { success: true, data: { status: 'skipped' } }
   // Re-analysis only for entries that need it — stops a loop from burning credits.
   if (entry.data.status === 'analyzed' && params.force !== true) {
     return { success: true, data: { status: 'analyzed' } }
@@ -250,6 +255,21 @@ const clearDemo: ActionHandler<Env> = async ({ userId, tools }) => {
 
 // ── Exchange diary ─────────────────────────────────────────────────────────
 
+/** Delete a notebook page with its replies and its photo file. */
+async function removeNotebookPage(tools: ActionTools, env: Env, owner: string, entryId: string, photo: unknown) {
+  for (;;) {
+    const r = await tools.deleteWhere('replies', { entryId }, 500)
+    if (!r.success || r.data.deleted < 500) break
+  }
+  const key = (photo as { key?: string } | null | undefined)?.key
+  if (key && !isDemoUser(owner)) {
+    await appFiles(env, { scope: 'self', userId: owner })
+      .delete(key)
+      .catch((err: unknown) => console.error(`[unpair] photo delete failed: ${err instanceof Error ? err.message : String(err)}`))
+  }
+  await tools.remove('entries', entryId)
+}
+
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 interface FriendshipData extends Record<string, unknown> {
@@ -283,8 +303,12 @@ const acceptInvite: ActionHandler<Env> = async ({ userId, params, tools }) => {
   return { success: true, data: { friendId: inviter } }
 }
 
-/** End a pairing, and take back everything each side had shared with the other. */
-const unpair: ActionHandler<Env> = async ({ userId, params, tools }) => {
+/**
+ * End a pairing. Journal entries either side had shared become private again;
+ * pages written in the notebook itself (source 'exchange') go with it, along
+ * with their photos and replies, since they live nowhere else.
+ */
+const unpair: ActionHandler<Env> = async ({ userId, params, tools, env }) => {
   const friendId = typeof params.friendId === 'string' ? params.friendId : ''
   const pairs = (await friendshipsOf(tools, userId)).filter((f) => f.data.members.includes(friendId))
   if (!pairs.length) return { success: false, error: 'Not paired with this person.' }
@@ -295,11 +319,28 @@ const unpair: ActionHandler<Env> = async ({ userId, params, tools }) => {
   ]) {
     for (const e of await ownEntries(tools, owner)) {
       const shared = Array.isArray(e.data.sharedWith) ? e.data.sharedWith : []
-      if (shared.includes(other)) await tools.update('entries', e.recordId, { sharedWith: shared.filter((id) => id !== other) })
+      if (!shared.includes(other)) continue
+      const rest = shared.filter((id) => id !== other)
+      if (e.data.source === 'exchange' && rest.length === 0) {
+        await removeNotebookPage(tools, env, owner, e.recordId, e.data.photo)
+      } else {
+        await tools.update('entries', e.recordId, { sharedWith: rest })
+      }
     }
   }
   for (const f of pairs) await tools.remove('friendships', f.recordId)
   return { success: true, data: { unpaired: friendId } }
+}
+
+/** Tear a page you wrote out of the notebook, with its photo and replies. */
+const tearOut: ActionHandler<Env> = async ({ userId, params, tools, env }) => {
+  const entryId = typeof params.entryId === 'string' ? params.entryId : ''
+  const got = await tools.get<EntryData & Record<string, unknown>>('entries', entryId)
+  if (!got.success || got.data.record.data.userId !== userId || got.data.record.data.source !== 'exchange') {
+    return { success: false, error: 'Page not found' }
+  }
+  await removeNotebookPage(tools, env, userId, entryId, got.data.record.data.photo)
+  return { success: true, data: { removed: entryId } }
 }
 
 export const actions: Record<string, ActionHandler<Env>> = {
@@ -309,4 +350,5 @@ export const actions: Record<string, ActionHandler<Env>> = {
   clearDemo,
   acceptInvite,
   unpair,
+  tearOut,
 }

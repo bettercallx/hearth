@@ -67,7 +67,7 @@ export function LookingBackWindow({ className }: { className?: string }) {
         <OpenLink to="/insights" label="Open Looking back" />
       </div>
       <div>
-        <p className="mb-2 text-xs text-muted-foreground">{new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'long' })}</p>
+        <p className="mb-2 text-xs text-muted-foreground">{new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'short' })}</p>
         <div className="grid grid-cols-7 gap-1">
           {Array.from({ length: lead }, (_, i) => (
             <span key={`lead-${i}`} />

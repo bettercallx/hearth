@@ -6,7 +6,7 @@ export type Entry = {
   userId?: string
   text: string
   entryDate: string
-  source: 'text' | 'voice'
+  source: 'text' | 'voice' | 'exchange'
   status: 'pending' | 'analyzed' | 'failed'
   mood?: number | null
   moodEdited?: boolean

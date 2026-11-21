@@ -29,7 +29,8 @@ export const entriesSchema: CollectionSchema = {
     { name: 'userId', storage: 'text', interpretation: 'plain', userBound: true, immutable: true },
     { name: 'text', storage: 'text', interpretation: 'plain', required: true },
     { name: 'entryDate', storage: 'text', interpretation: 'plain', required: true },
-    { name: 'source', storage: 'text', interpretation: { kind: 'select', options: ['text', 'voice'] } },
+    /** 'exchange' = a page written in the exchange diary: it belongs to the notebook, not to the person's own journal. */
+    { name: 'source', storage: 'text', interpretation: { kind: 'select', options: ['text', 'voice', 'exchange'] } },
     {
       name: 'status',
       storage: 'text',

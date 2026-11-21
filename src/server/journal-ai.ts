@@ -32,7 +32,10 @@ export function anthropicBody(req: CompletionRequest) {
 
 /** Pull the text out of an Anthropic Messages response. */
 export function anthropicText(data: unknown): string {
-  const content = (data as { content?: { type: string; text?: string }[] } | null)?.content
+  const d = data as { content?: { type: string; text?: string }[]; stop_reason?: string } | null
+  // Thinking tokens count toward max_tokens; a cut-off reply is half a JSON object.
+  if (d?.stop_reason === 'max_tokens') throw new Error('Model reply was truncated (max_tokens)')
+  const content = d?.content
   const text = content?.find((c) => c.type === 'text')?.text
   if (!text) throw new Error('Model returned no text')
   return text
@@ -143,7 +146,10 @@ export async function analyzeEntryText(
     (recent
       ? `TODAY (${memory.today}, ${weekday(memory.today)}):\n${text.slice(0, 8000)}\n\nRECENT DAYS (memory; refer back only if genuinely similar):\n${recent}`
       : `TODAY:\n${text.slice(0, 8000)}`) + '\n\nRespond with the JSON object only.'
-  const json = await completeJson(complete, { model: ENTRY_MODEL, system: ENTRY_SYSTEM, user, maxTokens: 1200 })
+  // The models think before answering (often 600–950 tokens here), and thinking
+  // counts toward max_tokens: leave plenty of room so the JSON is never cut off.
+  // Billing follows tokens actually used, not this ceiling.
+  const json = await completeJson(complete, { model: ENTRY_MODEL, system: ENTRY_SYSTEM, user, maxTokens: 4000 })
   const signals = normalizeSignals({ ...(json.signals as object), mood: json.mood })
   const moodTags = Array.isArray(json.moodTags)
     ? json.moodTags.filter((t): t is string => typeof t === 'string').slice(0, 3)
@@ -241,7 +247,7 @@ export async function writeInsight(
     model: INSIGHT_MODEL,
     system: INSIGHT_SYSTEM,
     user: JSON.stringify(payload),
-    maxTokens: 2000,
+    maxTokens: 8000,
   })
   const ids = new Set(input.patterns.map((p) => p.id))
   const dates = new Set(input.days.filter((d) => !d.riskFlag).map((d) => d.date))

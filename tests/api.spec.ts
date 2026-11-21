@@ -16,7 +16,7 @@ test.describe('API tests', () => {
     // If the app loaded and connected, the WS endpoint works
   })
 
-  for (const name of ['analyzeEntry', 'generateInsight', 'seedDemo', 'clearDemo', 'acceptInvite', 'unpair']) {
+  for (const name of ['analyzeEntry', 'generateInsight', 'seedDemo', 'clearDemo', 'acceptInvite', 'unpair', 'tearOut']) {
     test(`action ${name} refuses signed-out callers`, async ({ request }) => {
       const res = await request.post(`/api/actions/${name}`, { data: {} })
       expect(res.status()).toBe(401)

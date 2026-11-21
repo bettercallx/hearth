@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { LifeBuoy, Lock, Mic, Users, Volume2, Loader2, Trash2 } from 'lucide-react'
+import { LifeBuoy, Mic, Volume2, Loader2, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { callAction, formatDay, speak } from '@/lib/client'
 import type { Entry } from '@/lib/types'
 import { useMutations, useQuery, useUserLookup } from 'deepspace'
-import { joinNames, useFriends } from '@/lib/social'
 import { EntryPhoto } from './EntryPhoto'
 import { ConfirmModal, Popover, PopoverContent, PopoverTrigger, useToast } from '@/components/ui'
 import { EMPTY_SIGNALS } from '@/lib/signals'
@@ -156,12 +155,8 @@ export function EntryCard({
   const [open, setOpen] = useState(false)
   const [retrying, setRetrying] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const { removeConfirmed, put, ready } = useMutations<Entry>('entries')
+  const { removeConfirmed, ready } = useMutations<Entry>('entries')
   const { error } = useToast()
-  const { friends } = useFriends()
-  const sharedWith = entry.sharedWith ?? []
-  const sharedFriends = friends.filter((f) => sharedWith.includes(f.id))
-  const canShare = friends.length > 0 && !entry.riskFlag
   const stuck = entry.status === 'failed' || (entry.status === 'pending' && Date.now() - Date.parse(createdAt) > STUCK_MS)
   const retry = async () => {
     setRetrying(true)
@@ -182,14 +177,7 @@ export function EntryCard({
         <div className="flex flex-wrap gap-1.5">
           {entry.moodTags?.map((t) => <Tag key={t}>{t}</Tag>)}
         </div>
-        <div className="ml-auto flex items-center gap-3">
-          {sharedFriends.length > 0 && (
-            <span data-testid="shared-badge" className="inline-flex items-center gap-1 text-[11px] text-muted-foreground" title="Shared in your exchange diary">
-              <Users className="h-3 w-3" aria-hidden /> {joinNames(sharedFriends)}
-            </span>
-          )}
-          {entry.isDemo && <span className="text-[11px] uppercase tracking-wider text-muted-foreground/70">demo</span>}
-        </div>
+        {entry.isDemo && <span className="ml-auto text-[11px] uppercase tracking-wider text-muted-foreground/70">demo</span>}
       </header>
 
       {stuck ? (
@@ -227,18 +215,6 @@ export function EntryCard({
         >
           {open ? 'Hide entry' : 'Read entry'}
         </button>
-        {open && canShare && (
-          <button
-            type="button"
-            data-testid="toggle-share"
-            disabled={!ready}
-            onClick={() => void put(id, { sharedWith: sharedFriends.length ? [] : friends.map((f) => f.id) })}
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-          >
-            {sharedFriends.length ? <Lock className="h-3 w-3" aria-hidden /> : <Users className="h-3 w-3" aria-hidden />}
-            {sharedFriends.length ? 'Make private' : `Share with ${joinNames(friends)}`}
-          </button>
-        )}
         {open && (
           <button
             type="button"
@@ -251,7 +227,6 @@ export function EntryCard({
           </button>
         )}
       </div>
-      <Replies entryId={id} />
       <ConfirmModal
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}

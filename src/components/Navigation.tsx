@@ -66,7 +66,7 @@ export default function Navigation() {
           <div className="flex-1" />
 
           <span className="hidden text-sm text-muted-foreground sm:inline">
-            {formatDay(localToday(), { weekday: 'long', month: 'long', day: 'numeric' })}
+            {formatDay(localToday(), { weekday: 'long', month: 'short', day: 'numeric' })}
           </span>
 
           {!isLoaded ? null : isSignedIn && !profileReady ? (

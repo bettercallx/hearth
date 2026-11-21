@@ -46,7 +46,14 @@ export async function runTask(name: string, env: Env): Promise<void> {
   const byUser = new Map<string, EntryRow[]>()
   for (const e of entries) {
     // The sample friend is not a person: never spend a letter on her.
-    if (e.data.entryDate < start || e.data.entryDate > end || done.has(e.data.userId) || isDemoUser(e.data.userId)) continue
+    if (
+      e.data.entryDate < start ||
+      e.data.entryDate > end ||
+      done.has(e.data.userId) ||
+      isDemoUser(e.data.userId) ||
+      e.data.source === 'exchange'
+    )
+      continue
     byUser.set(e.data.userId, [...(byUser.get(e.data.userId) ?? []), e.data])
   }
 
