@@ -7,8 +7,8 @@
 import { HABIT_SIGNALS, POSITIVES, STRESSORS, normalizeSignals, type DaySignals } from '../lib/signals'
 import type { Pattern, RangeStats } from '../lib/patterns'
 
-export const ENTRY_MODEL = 'claude-haiku-5-5'
-export const INSIGHT_MODEL = 'claude-sonnet-5-5'
+const ENTRY_MODEL = 'claude-haiku-5-5'
+const INSIGHT_MODEL = 'claude-sonnet-5-5'
 
 export interface CompletionRequest {
   model: string
@@ -78,7 +78,7 @@ export function matchesRiskLanguage(text: string): boolean {
 
 // ── Per-entry analysis ────────────────────────────────────────────────────
 
-export interface EntryAnalysis {
+interface EntryAnalysis {
   mood: number | null
   moodTags: string[]
   summary: string
@@ -170,7 +170,7 @@ export async function analyzeEntryText(
 
 // ── Insight over a range ──────────────────────────────────────────────────
 
-export const LAWS = ['obvious', 'attractive', 'easy', 'satisfying'] as const
+const LAWS = ['obvious', 'attractive', 'easy', 'satisfying'] as const
 export type Law = (typeof LAWS)[number]
 
 export interface Suggestion {
@@ -183,7 +183,7 @@ export interface Suggestion {
   signal: keyof typeof HABIT_SIGNALS | null
 }
 
-export interface InsightContent {
+interface InsightContent {
   narrative: string
   identity: string
   highlights: { date: string; text: string }[]
@@ -191,7 +191,7 @@ export interface InsightContent {
   suggestions: Suggestion[]
 }
 
-export interface InsightInputDay {
+interface InsightInputDay {
   date: string
   mood: number | null
   summary: string

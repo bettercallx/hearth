@@ -1,7 +1,6 @@
 /**
- * An entry's photo as a polaroid. Bundled sample sketches load directly;
- * real uploads come through /api/photos, which checks the caller may read
- * the entry first.
+ * An entry's photo as a polaroid. It comes through /api/photos, which checks
+ * the caller may read the entry first.
  */
 
 import { useEffect, useState } from 'react'
@@ -22,7 +21,7 @@ export function EntryPhoto({
   tilt?: number
   className?: string
 }) {
-  const [src, setSrc] = useState<string | null>(photo?.demo ?? null)
+  const [src, setSrc] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
@@ -41,9 +40,7 @@ export function EntryPhoto({
     }
   }, [entryId, photo?.key])
 
-  if (!photo || (!photo.key && !photo.demo)) return null
-  // A bundled sample image that no longer ships (older samples): show nothing rather than a broken frame.
-  if (photo.demo && failed) return null
+  if (!photo?.key) return null
   return (
     <figure
       data-testid="entry-photo"

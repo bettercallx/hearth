@@ -19,7 +19,7 @@ export type Entry = {
   isDemo?: boolean
   /** Friends this entry is shared with in the exchange diary; empty = private. */
   sharedWith?: string[]
-  photo?: { key?: string; demo?: string } | null
+  photo?: { key: string } | null
 }
 
 export type Insight = {
@@ -35,6 +35,9 @@ export type Insight = {
   suggestions: Suggestion[]
   stats: RangeStats
 }
+
+/** A friend's reply or reaction on a shared page. */
+export type Reply = { userId?: string; entryId: string; text?: string; emoji?: string; participants: string[] }
 
 export type Habit = {
   userId?: string

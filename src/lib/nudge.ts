@@ -8,14 +8,14 @@
 import { FACTORS, type Pattern } from './patterns'
 import type { DaySignals, HabitSignal } from './signals'
 
-export interface HabitTemplate {
+interface HabitTemplate {
   name: string
   signal: HabitSignal
   stack: string
   twoMinute: string
 }
 
-export interface Nudge {
+interface Nudge {
   patternId: string
   /** What happened today, tied to the pattern's numbers. */
   observation: string

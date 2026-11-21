@@ -1,8 +1,8 @@
 /**
  * What Hearth offers right after an entry: a link to the past day it
- * remembered, today's habit check-in, and at most one "for tomorrow" nudge
- * drawn from the person's own patterns. Plus the never-miss-twice line shown
- * before writing. All computed from synced entries — no extra model calls.
+ * remembered, and at most one "for tomorrow" nudge drawn from the person's
+ * own patterns. Plus the never-miss-twice line shown before writing. All
+ * computed from synced entries — no extra model calls.
  */
 
 import { useMemo } from 'react'

@@ -19,7 +19,7 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
-export function shiftMonth(month: string, delta: number) {
+function shiftMonth(month: string, delta: number) {
   const [y, m] = month.split('-').map(Number)
   const d = new Date(y, m - 1 + delta, 1)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`

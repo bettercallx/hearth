@@ -1,11 +1,8 @@
 /**
- * Top nav — minimal placeholder bar wired to the app's mechanisms:
- * nav.ts-driven links (with role/dev filtering), sign-in via <AuthOverlay>,
- * and sign-out. Restyle or rebuild it freely; keep the data-testid hooks
- * (`app-navigation`, `nav-sign-in-button`, `nav-user-name`, `nav-user-email`)
- * — the shipped tests rely on them. `nav-user-email` is the one that carries
- * an identity the test can check exactly: a display name is optional, the
- * email is the credential the session was opened with.
+ * Header: the Hearth wordmark (home), a breadcrumb on full-page views, the
+ * date, and the account menu (pages from nav.ts, sign-out). Keep the
+ * data-testid hooks (`app-navigation`, `nav-sign-in-button`,
+ * `nav-user-name`, `nav-user-email`); the tests rely on them.
  */
 
 import { useState } from 'react'

@@ -120,7 +120,7 @@ test.afterEach(async () => {
   created.clear()
 })
 
-test('sample journal surfaces the lunch → afternoon energy pattern with evidence', async ({ users }) => {
+test('sample journal: habits, calendar, energy & mood, and the lunch pattern with evidence', async ({ users }) => {
   const [alice] = await users(['Alice'])
   const page = alice.page
   await page.goto('/settings')
@@ -167,7 +167,7 @@ test('sample journal surfaces the lunch → afternoon energy pattern with eviden
   await expect(page.locator('[data-testid="patterns"]')).not.toContainText('afternoon energy')
 
   // Habits fill in from entries — no check-off.
-  await page.goto('/habits')
+  await page.goto('/insights#habits')
   await page.getByTestId('new-habit').click()
   const habitName = `__test-${Date.now()}__ lunch before 1`
   await page.getByTestId('habit-name').fill(habitName)
@@ -227,7 +227,7 @@ test('after an entry: memory link and a nudge from your own pattern, nothing mor
   // Whatever it picks must be a real day from the journal (validated server-side).
   await expect(page.getByTestId('recall-link')).toHaveAttribute('href', /\/insights\?day=\d{4}-\d{2}-\d{2}/)
 
-  // Taking the suggestion creates the habit, and the check-in reflects today honestly.
+  // Taking the suggestion creates the habit; the nudge then points at it.
   habitsMade.set(page, ['Lunch before 1pm'])
   await page.getByTestId('adopt-nudge').click()
   await expect(nudge).toContainText('Just the two-minute version of “Lunch before 1pm”')

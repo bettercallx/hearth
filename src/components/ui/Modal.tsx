@@ -202,4 +202,3 @@ Modal.Description = ModalDescription
 Modal.Body = ModalBody
 Modal.Footer = ModalFooter
 
-export default Modal

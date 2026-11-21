@@ -12,7 +12,7 @@ import type { ReactElement } from 'react'
  * (`https://my-app.app.space/about`); a root-relative `ogImage` is resolved
  * against the same origin.
  */
-export interface SeoProps {
+interface SeoProps {
   /** Browser tab and search-result headline. */
   title: string
   /** One plain sentence; shown under the title in results and previews. */

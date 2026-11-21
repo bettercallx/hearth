@@ -1,9 +1,5 @@
 <!DOCTYPE html>
-<!--
-  Active theme is set on the <html> element below.
-  To switch themes, change `data-theme` to any id defined in src/themes.ts.
-  Color values per theme live in src/themes.css.
--->
+<!-- Hearth's colours live in src/themes.css under [data-theme="paper"]. -->
 <html lang="en" data-theme="paper">
   <head>
     <meta charset="UTF-8" />
@@ -15,16 +11,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Nanum+Pen+Script&family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&display=swap" rel="stylesheet" />
     <!--
-      First-paint background, keyed to the data-theme attribute above.
-      Without this the browser paints white until the CSS bundle arrives —
-      a hard flash on the dark themes. Each value mirrors --color-background
-      in src/styles.css (slate) / src/themes.css; keep them in sync when
-      adding or editing themes.
+      First-paint background, so the page isn't white until the CSS arrives.
+      Mirrors --color-background in src/themes.css.
     -->
     <style>
-      html { background-color: #0a0a0a; color-scheme: dark; }
       html[data-theme="paper"] { background-color: #f6f1e8; color-scheme: light; }
-      /* Add one line per theme you create, mirroring its --color-background. */
     </style>
   </head>
   <body>

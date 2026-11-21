@@ -12,7 +12,7 @@ import type { DaySignals } from '@/lib/signals'
 import { cn } from '@/lib/utils'
 import { moodColor, moodWord } from './bits'
 
-export interface RhythmDay {
+interface RhythmDay {
   date: string
   signals: DaySignals | null
 }

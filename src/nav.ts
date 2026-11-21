@@ -9,7 +9,7 @@
 
 import type { Role } from './constants'
 
-export interface NavItem {
+interface NavItem {
   path: string
   label: string
   roles?: Role[]

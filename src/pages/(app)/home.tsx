@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AuthOverlay, useAuth, useMutations, useQuery } from 'deepspace'
-import { Mic, Square, ArrowRight, Users, Lock, Mail, Loader2 } from 'lucide-react'
+import { AuthOverlay, useAuth, useMutations } from 'deepspace'
+import { Mic, Square, ArrowRight, Users, Lock, Loader2 } from 'lucide-react'
 import { Button, Textarea, useToast } from '@/components/ui'
 import { VoiceWave } from '@/components/hearth/VoiceWave'
 import { ExchangeWindow, LookingBackWindow } from '@/components/hearth/DeskWindows'
@@ -11,10 +11,9 @@ import { cn } from '@/lib/utils'
 import { CrisisCard, Tag } from '@/components/hearth/bits'
 import { callAction, formatDay, localToday, transcribe } from '@/lib/client'
 import { useRecorder } from '@/lib/useRecorder'
-import { lastLetterSeen } from '@/lib/letters'
 import { addDays } from '@/lib/patterns'
 import { AfterEntry, NeverMissTwice } from '@/components/hearth/AfterEntry'
-import type { Entry, Insight } from '@/lib/types'
+import type { Entry } from '@/lib/types'
 import { joinNames, useFriends, useMyEntries } from '@/lib/social'
 
 const PROMPTS = [
@@ -75,7 +74,7 @@ function Desk() {
         >
           <Lock className="h-3 w-3" aria-hidden /> {focused ? 'Just you and Hearth' : 'Only you'}
         </span>
-        <Companion embedded onFocusChange={setFocused} />
+        <Companion onFocusChange={setFocused} />
       </section>
       <div className={cn('order-2 lg:order-3', side)} aria-hidden={focused || undefined}>
         <ExchangeWindow className="min-h-[22rem] lg:sticky lg:top-2 lg:max-h-[calc(100vh-6rem)]" />
@@ -109,28 +108,8 @@ function SignedOutPreview() {
 
 type Phase = 'compose' | 'recording' | 'transcribing' | 'saving' | 'thinking'
 
-/** A letter from Hearth stays "new" for a week, until it's opened. */
-const LETTER_FRESH_MS = 7 * 24 * 60 * 60 * 1000
-
-function LetterNotice() {
-  const { records } = useQuery<Insight>('insights', { orderBy: 'createdAt', orderDir: 'desc', limit: 1 })
-  const letter = records[0]
-  if (!letter || letter.recordId === lastLetterSeen() || Date.now() - Date.parse(letter.createdAt) > LETTER_FRESH_MS)
-    return null
-  return (
-    <Link
-      to="/insights#letter"
-      data-testid="letter-notice"
-      className="mt-5 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-4 py-2 text-sm text-foreground hover:bg-primary/10"
-    >
-      <Mail className="h-4 w-4 text-primary" aria-hidden />
-      Hearth wrote you a letter about {letter.data.trigger === 'weekly' ? 'your week' : `the last ${letter.data.days} days`}
-      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-    </Link>
-  )
-}
-
-function Companion({ embedded = false, onFocusChange }: { embedded?: boolean; onFocusChange?: (focused: boolean) => void }) {
+/** Hearth's page on the desk: the question, the talk button, and Hearth's reply. */
+function Companion({ onFocusChange }: { onFocusChange: (focused: boolean) => void }) {
   const today = localToday()
   // Recent entries feed today's list, the reflection, and Hearth's nudges.
   const { records: recent, status: recentStatus } = useMyEntries({ orderBy: 'createdAt', orderDir: 'desc', limit: 200 })
@@ -251,13 +230,11 @@ function Companion({ embedded = false, onFocusChange }: { embedded?: boolean; on
 
   // Writing, talking, or waiting for Hearth: the desk around this page steps back.
   const focused = phase !== 'compose' || typing || !!text
-  useEffect(() => onFocusChange?.(focused), [focused, onFocusChange])
+  useEffect(() => onFocusChange(focused), [focused, onFocusChange])
 
   return (
-    <div className={embedded ? 'mx-auto max-w-2xl' : 'mx-auto max-w-2xl px-6 pb-24 pt-12 sm:pt-20'}>
-      {/* On the desk the letter lives in the Looking back window. */}
-      {!embedded && <LetterNotice />}
-      {/* Right padding keeps the question clear of the "Only you" badge. */}
+    <div className="mx-auto max-w-2xl">
+      {/* Side padding keeps the question clear of the "Only you" badge. */}
       <h1 className="px-14 text-center font-display text-4xl font-light leading-tight text-foreground sm:px-24 sm:text-5xl">
         {latest ? 'Thank you for telling me.' : prompt}
       </h1>

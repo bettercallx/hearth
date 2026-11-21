@@ -92,7 +92,7 @@ function confidenceFor(minN: number, effect: number): Confidence {
   return 'tentative'
 }
 
-export interface Factor {
+interface Factor {
   id: string
   /** Phrase for the "with" group, e.g. "you ate lunch on time". */
   withLabel: string
@@ -104,10 +104,10 @@ export interface Factor {
 }
 
 /** What a day is judged by: how it felt, and how much energy it had overall. */
-export type Outcome = 'mood' | 'energy'
+type Outcome = 'mood' | 'energy'
 
 /** The whole day's energy: the mean of whatever parts of the day were mentioned. */
-export function dayEnergy(s: DaySignals): number | null {
+function dayEnergy(s: DaySignals): number | null {
   const parts = [s.energyMorning, s.energyAfternoon, s.energyEvening].filter((v): v is number => typeof v === 'number')
   return parts.length ? Math.round((parts.reduce((a, b) => a + b, 0) / parts.length) * 10) / 10 : null
 }

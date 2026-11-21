@@ -63,7 +63,7 @@ export default function InsightsPage() {
       : ([...byDate.keys()].filter((d) => d.startsWith(month)).sort().at(-1) ?? null)
   const dayRows = selected ? [...(byDate.get(selected) ?? [])].reverse() : []
 
-  // #habits / #letter links (from Today, old /habits) scroll once the data is in.
+  // #habits / #letter links (from the desk windows) scroll once the data is in.
   const { hash } = useLocation()
   useEffect(() => {
     if (status === 'ready' && (hash === '#habits' || hash === '#letter'))

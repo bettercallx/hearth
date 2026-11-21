@@ -21,7 +21,7 @@ export interface EntryRow {
 
 export const MIN_DAYS_FOR_INSIGHT = 3
 
-export type InsightBuild =
+type InsightBuild =
   | { ok: true; data: Record<string, unknown> }
   | { ok: false; error: string }
 

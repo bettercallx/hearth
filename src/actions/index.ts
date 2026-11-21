@@ -26,7 +26,7 @@ const ALLOWED_RANGES = [7, 10, 14]
 /** Insights cost a Sonnet call; this caps what one person can trigger per day. */
 const MAX_MANUAL_INSIGHTS_PER_DAY = 6
 
-export function completeVia(tools: ActionTools): Complete {
+function completeVia(tools: ActionTools): Complete {
   return async (req) => {
     const r = await tools.integration('anthropic/chat-completion', anthropicBody(req))
     if (!r.success) throw new Error(r.error)
@@ -36,7 +36,7 @@ export function completeVia(tools: ActionTools): Complete {
 
 interface EntryData extends EntryRow {
   text: string
-  photo?: { key?: string; demo?: string } | null
+  photo?: { key: string } | null
   moodEdited?: boolean | number
   isDemo?: boolean | number
   sharedWith?: string[]
@@ -156,7 +156,7 @@ const generateInsight: ActionHandler<Env> = async ({ userId, params, tools }) =>
 
 /**
  * Two weeks of sample data ending yesterday: the caller's journal, plus an
- * exchange diary with the sample friend (her entries, sketches and replies).
+ * exchange diary with the sample friend (her pages and replies both ways).
  * Loading again replaces the old sample, so it also upgrades older demos.
  */
 const seedDemo: ActionHandler<Env> = async (ctx) => {
@@ -203,7 +203,6 @@ const seedDemo: ActionHandler<Env> = async (ctx) => {
       moodTags: e.moodTags,
       isDemo: true,
       sharedWith: [userId],
-      photo: e.photo ? { demo: e.photo } : null,
     })
     theirs.push(r.success ? r.data.recordId : '')
   }

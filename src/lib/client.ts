@@ -44,7 +44,7 @@ const SPEECH_SAMPLE_RATE = 16_000
  * that MediaRecorder produces, so re-encode in the browser: decode, mix down
  * to mono, resample to 16 kHz (plenty for speech), write 16-bit PCM.
  */
-export async function toWav(audio: Blob): Promise<Blob> {
+async function toWav(audio: Blob): Promise<Blob> {
   const decoded = await new AudioContext().decodeAudioData(await audio.arrayBuffer())
   const frames = Math.ceil(decoded.duration * SPEECH_SAMPLE_RATE)
   const offline = new OfflineAudioContext(1, frames, SPEECH_SAMPLE_RATE)
@@ -86,7 +86,7 @@ export async function transcribe(audio: Blob): Promise<string> {
 const PHOTO_MAX_EDGE = 1600
 
 /** The photo can't be decoded here, so it must not be uploaded: no one could see it. */
-export class UnsupportedPhotoError extends Error {
+class UnsupportedPhotoError extends Error {
   constructor() {
     super("This photo's format can't be shown. Try a JPG or PNG.")
   }

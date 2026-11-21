@@ -3,16 +3,16 @@
  * without spending fourteen LLM calls:
  *
  * - DEMO_ENTRIES: a freelance designer's journal, with pre-extracted signals.
- *   It contains a few real patterns (skipped lunch → low afternoon energy,
- *   deadlines on hard days, getting outside on good ones, late screens →
- *   groggy mornings) and noise that should NOT surface as a pattern.
+ *   It contains a few real patterns (skipped lunch → lower mood and energy,
+ *   deadlines on hard days, getting outside and enough sleep on good ones)
+ *   and noise that should NOT surface as a pattern.
  * - DEMO_FRIEND_ENTRIES / replies: an exchange diary with Mia, a freelance
  *   illustrator, with replies both ways.
  */
 
 import type { DaySignals } from './signals'
 
-export interface DemoEntry {
+interface DemoEntry {
   text: string
   mood: number
   moodTags: string[]
@@ -161,14 +161,12 @@ export const DEMO_ENTRIES: DemoEntry[] = [
   },
 ]
 
-export interface DemoFriendEntry {
+interface DemoFriendEntry {
   /** Index into the same fourteen days as DEMO_ENTRIES. */
   day: number
   text: string
   mood: number
   moodTags: string[]
-  /** A bundled sketch under /public/demo. */
-  photo?: string
 }
 
 export const DEMO_FRIEND_ENTRIES: DemoFriendEntry[] = [
@@ -210,7 +208,7 @@ export const DEMO_FRIEND_ENTRIES: DemoFriendEntry[] = [
   },
 ]
 
-export interface DemoReply {
+interface DemoReply {
   /** Who wrote it. */
   from: 'me' | 'friend'
   /** Which entry: one of mine by DEMO_ENTRIES index, or the friend's by DEMO_FRIEND_ENTRIES index. */

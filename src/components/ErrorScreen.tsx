@@ -15,7 +15,7 @@
 
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 
-export interface DecodedReactError {
+interface DecodedReactError {
   code: number
   title: string
   explanation: string
@@ -71,7 +71,7 @@ function errorMessage(error: unknown): string | null {
  * `null` if it isn't a recognizable React error — in which case the caller
  * should just show the raw message.
  */
-export function decodeReactError(error: unknown): DecodedReactError | null {
+function decodeReactError(error: unknown): DecodedReactError | null {
   const message = errorMessage(error)
   if (!message) return null
   const code = extractReactErrorCode(message)
@@ -89,7 +89,7 @@ export function decodeReactError(error: unknown): DecodedReactError | null {
   }
 }
 
-export interface ErrorScreenProps {
+interface ErrorScreenProps {
   /** The thrown value, as caught by an error boundary (often non-Error). */
   error: unknown
   /** Recovery action. Defaults to a full page reload. */

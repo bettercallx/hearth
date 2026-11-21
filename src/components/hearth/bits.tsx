@@ -3,7 +3,7 @@ import { LifeBuoy, Mic, Loader2, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { callAction, formatDay } from '@/lib/client'
 import type { Entry } from '@/lib/types'
-import { useMutations, useQuery, useUserLookup } from 'deepspace'
+import { useMutations } from 'deepspace'
 import { EntryPhoto } from './EntryPhoto'
 import { ConfirmModal, Popover, PopoverContent, PopoverTrigger, useToast } from '@/components/ui'
 import { EMPTY_SIGNALS } from '@/lib/signals'
@@ -21,7 +21,7 @@ export function moodWord(mood: number | null | undefined) {
   return mood == null ? 'unrated' : MOOD_WORDS[Math.min(4, Math.max(0, Math.round(mood) - 1))]
 }
 
-export function MoodDot({ mood, className }: { mood: number | null | undefined; className?: string }) {
+function MoodDot({ mood, className }: { mood: number | null | undefined; className?: string }) {
   return (
     <span
       title={`Mood: ${moodWord(mood)}`}
@@ -32,7 +32,7 @@ export function MoodDot({ mood, className }: { mood: number | null | undefined; 
 }
 
 /** The mood dot doubles as an editor: the person always has the last word on how a day felt. */
-export function MoodPicker({ id, entry }: { id: string; entry: Entry }) {
+function MoodPicker({ id, entry }: { id: string; entry: Entry }) {
   const { put, ready } = useMutations<Entry>('entries')
   const [open, setOpen] = useState(false)
   if (entry.riskFlag) return <MoodDot mood={null} />
@@ -223,22 +223,3 @@ export function EntryCard({ entry, id, createdAt }: { entry: Entry; id: string; 
   )
 }
 
-export type Reply = { userId?: string; entryId: string; text?: string; emoji?: string; participants: string[] }
-
-/** Friends' replies and reactions on an entry, live. Renders nothing when there are none. */
-export function Replies({ entryId, className }: { entryId: string; className?: string }) {
-  const { records } = useQuery<Reply>('replies', { where: { entryId }, orderBy: 'createdAt', orderDir: 'asc' })
-  const { getName } = useUserLookup()
-  if (!records.length) return null
-  return (
-    <ul data-testid="replies" className={cn('mt-4 space-y-2 border-t border-border pt-3', className)}>
-      {records.map((r) => (
-        <li key={r.recordId} className="flex items-baseline gap-2 text-sm">
-          <span className="shrink-0 font-medium text-foreground">{(getName(r.data.userId ?? '') ?? 'Friend').split(' ')[0]}</span>
-          {r.data.emoji && <span aria-label="reaction">{r.data.emoji}</span>}
-          {r.data.text && <span className="text-muted-foreground">{r.data.text}</span>}
-        </li>
-      ))}
-    </ul>
-  )
-}

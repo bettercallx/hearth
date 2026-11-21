@@ -78,7 +78,7 @@ export default function Landing() {
               <figure className="ml-0 rounded-2xl border border-border bg-card p-6 sm:ml-10">
                 <div className="flex items-start justify-between gap-3">
                   <p className="text-[15px] leading-relaxed text-foreground">
-                    On days you skipped or delayed lunch, your afternoon energy averaged 1.8/5 vs 3.8/5 on days you ate on time.
+                    On days you skipped or delayed lunch, your mood averaged 2.2/5 vs 3.9/5 on days you ate on time.
                   </p>
                   <span className="shrink-0 rounded-full border border-primary/50 px-2 py-0.5 text-[11px] text-primary">Consistent</span>
                 </div>

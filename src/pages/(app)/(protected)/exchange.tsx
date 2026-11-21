@@ -11,12 +11,11 @@ import { useSearchParams } from 'react-router-dom'
 import { useAuth, useMutations, useQuery, useR2Files, useUserLookup } from 'deepspace'
 import { Camera, Copy, Link2, UserMinus, X } from 'lucide-react'
 import { Button, ConfirmModal, Input, useToast } from '@/components/ui'
-import type { Reply } from '@/components/hearth/bits'
 import { EntryPhoto } from '@/components/hearth/EntryPhoto'
 import { callAction, formatDay, localToday, preparePhoto } from '@/lib/client'
 import { addDays } from '@/lib/patterns'
 import { REACTIONS, displayName, inviteCodeFrom, useFriends, type Friend } from '@/lib/social'
-import type { Entry } from '@/lib/types'
+import type { Entry, Reply } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 type Invite = { userId?: string; code: string; status: 'open' | 'used' }
