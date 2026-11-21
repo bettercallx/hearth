@@ -407,8 +407,11 @@ test('exchange diary photos: taped in for a friend, private to the two of you, g
 
   await alice.page.goto('/exchange')
   const invite = await openInvite(alice.page)
-  const code = new URL(await invite.inputValue()).searchParams.get('invite')
-  await bob.page.goto(`/exchange?invite=${code}`)
+  const link = await invite.inputValue()
+  // Bob got the invite as text in a chat: he pastes it instead of opening the link.
+  await bob.page.goto('/exchange')
+  await bob.page.getByTestId('join-invite-input').fill(link)
+  await bob.page.getByTestId('join-invite-submit').click()
   const bobToken = bearer(bob.page)
   await bob.page.getByTestId('accept-invite').getByRole('button', { name: 'Accept' }).click()
   const bobAuth = await bobToken
@@ -416,7 +419,16 @@ test('exchange diary photos: taped in for a friend, private to the two of you, g
   // The sample friend's sketches are in Alice's notebook with Mia.
   await alice.page.reload()
   await alice.page.getByTestId('friend-name').filter({ hasText: 'Mia' }).click()
+  // One sheet per week, newest first: this week holds the cake sketch…
+  await expect(alice.page.getByTestId('week-range')).toContainText('this week')
   await expect(alice.page.locator('[data-testid="entry-photo"] img[src="/demo/cake.svg"]')).toBeVisible({ timeout: 15_000 })
+  const dates = await alice.page.locator('[data-testid="shared-entry"]').evaluateAll((els) => els.length)
+  expect(dates).toBeGreaterThan(1)
+  // …and the week before holds the plant.
+  await alice.page.getByRole('button', { name: '← earlier week' }).click()
+  await expect(alice.page.locator('[data-testid="entry-photo"] img[src="/demo/plant.svg"]')).toBeVisible()
+  await expect(alice.page.locator('[data-testid="entry-photo"] img[src="/demo/cake.svg"]')).toHaveCount(0)
+  await alice.page.getByRole('button', { name: 'later week →' }).click()
 
   // Alice writes a page with a photo in Bob's notebook.
   await alice.page.getByTestId('friend-name').filter({ hasText: 'Bob' }).click()

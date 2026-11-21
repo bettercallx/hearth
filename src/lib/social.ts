@@ -51,3 +51,15 @@ export function displayName(id: string | undefined, getName: (id: string) => str
   if (!id) return 'Your friend'
   return getName(id) ?? (isDemoUser(id) ? DEMO_FRIEND.name : 'Your friend')
 }
+
+/** Pull an invite code out of whatever was pasted: the whole link, or just the code. */
+export function inviteCodeFrom(pasted: string): string | null {
+  const text = pasted.trim()
+  try {
+    const code = new URL(text).searchParams.get('invite')
+    if (code && /^[A-Za-z0-9]{8,32}$/.test(code)) return code
+  } catch {
+    // Not a URL; maybe the bare code.
+  }
+  return /^[A-Za-z0-9]{8,32}$/.test(text) ? text : null
+}

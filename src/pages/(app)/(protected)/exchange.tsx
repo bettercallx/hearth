@@ -14,7 +14,8 @@ import { Button, ConfirmModal, Input, useToast } from '@/components/ui'
 import type { Reply } from '@/components/hearth/bits'
 import { EntryPhoto } from '@/components/hearth/EntryPhoto'
 import { callAction, formatDay, localToday, preparePhoto } from '@/lib/client'
-import { REACTIONS, displayName, useFriends, type Friend } from '@/lib/social'
+import { addDays } from '@/lib/patterns'
+import { REACTIONS, displayName, inviteCodeFrom, useFriends, type Friend } from '@/lib/social'
 import type { Entry } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -53,7 +54,7 @@ export default function ExchangePage() {
       ) : (
         <>
           <Header me={userId} friend={friend} friends={friends} onPick={setPicked} />
-          <Notebook me={userId} friend={friend} />
+          <Notebook key={friend.id} me={userId} friend={friend} />
         </>
       )}
     </div>
@@ -147,8 +148,8 @@ function Notebook({ me, friend }: { me: string; friend: Friend }) {
   const { records: replies } = useQuery<Reply>('replies', { orderBy: 'createdAt', orderDir: 'asc', limit: 2000 })
   const { getName } = useUserLookup()
 
-  // This notebook: what you shared with them, and what they shared with you.
-  const pages = useMemo(
+  // This notebook: what you shared with them, and what they shared with you, newest first.
+  const thread = useMemo(
     () =>
       (records as Row[])
         .filter(
@@ -156,9 +157,16 @@ function Notebook({ me, friend }: { me: string; friend: Friend }) {
             (r.data.userId === friend.id && (r.data.sharedWith ?? []).includes(me)) ||
             (r.data.userId === me && (r.data.sharedWith ?? []).includes(friend.id)),
         )
-        .sort((a, b) => a.data.entryDate.localeCompare(b.data.entryDate) || a.createdAt.localeCompare(b.createdAt)),
+        .sort((a, b) => b.data.entryDate.localeCompare(a.data.entryDate) || b.createdAt.localeCompare(a.createdAt)),
     [records, me, friend.id],
   )
+
+  // One sheet of paper per week: the last seven days, then the seven before, and so on.
+  const [week, setWeek] = useState(0)
+  const end = addDays(localToday(), -7 * week)
+  const start = addDays(end, -6)
+  const pages = thread.filter((r) => r.data.entryDate >= start && r.data.entryDate <= end)
+  const hasEarlier = thread.some((r) => r.data.entryDate < start)
   const byEntry = useMemo(() => {
     const m = new Map<string, typeof replies>()
     for (const r of replies) m.set(r.data.entryId, [...(m.get(r.data.entryId) ?? []), r])
@@ -177,9 +185,39 @@ function Notebook({ me, friend }: { me: string; friend: Friend }) {
       />
       <MarginDoodles />
 
+      <nav aria-label="Weeks" data-testid="week-pager" className="absolute inset-x-0 top-0 flex h-[70px] items-center justify-between pl-[64px] pr-12 sm:pl-[104px]">
+        <button
+          type="button"
+          onClick={() => setWeek((w) => w + 1)}
+          disabled={!hasEarlier}
+          className="font-pen text-[22px] text-[#4d5866] hover:text-[#26303b] disabled:invisible"
+        >
+          ← earlier week
+        </button>
+        <span data-testid="week-range" className="text-xs uppercase tracking-[0.16em] text-[#4d5866]">
+          {week === 0 ? 'this week · ' : ''}
+          {formatDay(start, { month: 'short', day: 'numeric' })} – {formatDay(end, { month: 'short', day: 'numeric' })}
+        </span>
+        <button
+          type="button"
+          onClick={() => setWeek((w) => Math.max(0, w - 1))}
+          disabled={week === 0}
+          className="font-pen text-[22px] text-[#4d5866] hover:text-[#26303b] disabled:invisible"
+        >
+          later week →
+        </button>
+      </nav>
+
+      {/* Newest on top, so the blank page to write on is the first thing you see this week. */}
+      {week === 0 && <WritePage friend={friend} />}
+
       {pages.length === 0 ? (
-        <p className="font-pen text-[28px] leading-9 text-[#8995a3]">
-          a fresh notebook! write the first page below and pass it to {name(friend.id)}…
+        <p className={cn('font-pen text-[28px] leading-9 text-[#8995a3]', week === 0 && 'mt-9')}>
+          {week === 0
+            ? thread.length
+              ? `nothing passed back and forth this week yet. write ${name(friend.id)} a page…`
+              : `a fresh notebook! write the first page above and pass it to ${name(friend.id)}…`
+            : 'no pages this week.'}
         </p>
       ) : (
         pages.map((p, i) => {
@@ -190,7 +228,10 @@ function Notebook({ me, friend }: { me: string; friend: Friend }) {
               data-testid="shared-entry"
               data-entry-id={p.recordId}
               data-author={p.data.userId === me ? 'me' : 'friend'}
-              className={cn('group', showDate && i > 0 && 'mt-9 border-t-2 border-dashed border-[#c9dbef] pt-[34px]')}
+              className={cn(
+                'group',
+                showDate && (i > 0 || week === 0) && 'mt-9 border-t-2 border-dashed border-[#c9dbef] pt-[34px]',
+              )}
             >
               {showDate && (
                 <p className="mb-0 h-9 text-xs uppercase leading-9 tracking-[0.16em] text-[#4d5866]">
@@ -212,8 +253,6 @@ function Notebook({ me, friend }: { me: string; friend: Friend }) {
           )
         })
       )}
-
-      <WritePage friend={friend} />
     </div>
   )
 }
@@ -370,7 +409,7 @@ function WritePage({ friend }: { friend: Friend }) {
   }
 
   return (
-    <section aria-label={`Write a page for ${first}`} className="mt-9 border-t-2 border-dashed border-[#c9dbef] pt-[34px]">
+    <section aria-label={`Write a page for ${first}`}>
       <p className="h-9 text-xs uppercase leading-9 tracking-[0.16em] text-[#4d5866]">
         {formatDay(localToday(), { weekday: 'long', month: 'short', day: 'numeric' })} · your page
       </p>
@@ -568,7 +607,51 @@ function InviteNote() {
           </Button>
         </>
       )}
+      <JoinWithInvite />
     </div>
+  )
+}
+
+/** For an invite that arrived as text: paste it, then accept it like any link. */
+function JoinWithInvite() {
+  const [, setParams] = useSearchParams()
+  const [value, setValue] = useState('')
+  const [bad, setBad] = useState(false)
+  return (
+    <form
+      className="mt-4 border-t border-dashed border-[#d9c96a] pt-3"
+      onSubmit={(e) => {
+        e.preventDefault()
+        const code = inviteCodeFrom(value)
+        setBad(!code)
+        if (code) {
+          setParams({ invite: code }, { replace: true })
+          setValue('')
+        }
+      }}
+    >
+      <label htmlFor="join-invite" className="text-xs uppercase tracking-[0.14em] text-[#6b5a10]">
+        Got an invite? Paste it here
+      </label>
+      <div className="mt-2 flex gap-2">
+        <Input
+          id="join-invite"
+          data-testid="join-invite-input"
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value)
+            setBad(false)
+          }}
+          placeholder="link or code"
+          className="bg-white/70"
+          aria-invalid={bad || undefined}
+        />
+        <Button type="submit" variant="secondary" disabled={!value.trim()} data-testid="join-invite-submit">
+          Open
+        </Button>
+      </div>
+      {bad && <p className="mt-1.5 text-xs text-destructive">That doesn't look like an invite link or code.</p>}
+    </form>
   )
 }
 

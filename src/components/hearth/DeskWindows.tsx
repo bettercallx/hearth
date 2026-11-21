@@ -137,7 +137,8 @@ export function ExchangeWindow({ className }: { className?: string }) {
     const top = ranked[0]
     if (!top) return { friend: null, pages: [] as Row[], photoPage: null }
     const theirPhotos = top.t.filter((r) => r.data.userId === top.f.id && r.data.photo)
-    return { friend: top.f, pages: top.t.slice(-2), photoPage: theirPhotos.at(-1) ?? null }
+    // Newest first, like the notebook.
+    return { friend: top.f, pages: top.t.slice(-2).reverse(), photoPage: theirPhotos.at(-1) ?? null }
   }, [records, friends, userId])
 
   const name = (id: string | undefined) => displayName(id, getName).split(' ')[0]
