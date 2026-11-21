@@ -22,7 +22,7 @@ export default function SettingsPage() {
     setBusy(true)
     try {
       await callAction(name, { today: localToday() })
-      success(name === 'seedDemo' ? 'Sample journal added' : 'Sample journal removed')
+      success(name === 'seedDemo' ? 'Sample data loaded' : 'Sample data removed')
     } catch (e) {
       error('Something went wrong', e instanceof Error ? e.message : undefined)
     } finally {
@@ -64,19 +64,24 @@ export default function SettingsPage() {
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-6">
-        <h2 className="text-base font-medium text-foreground">Sample journal</h2>
+        <h2 className="text-base font-medium text-foreground">Sample data</h2>
         <p className="mt-3 text-sm text-muted-foreground">
           {demoCount > 0
-            ? `${demoCount} sample entries are mixed into your journal.`
-            : 'Ten days of a fictional journal, so you can see patterns and look-backs before you have two weeks of your own.'}
+            ? `${demoCount} sample entries are mixed into your journal, plus an exchange diary with Mia, a sample friend.`
+            : 'Two weeks of a fictional freelance designer\'s journal and an exchange diary with a sample friend, so you can see patterns, nudges, letters and the diary before you have two weeks of your own.'}
         </p>
         {demoCount > 0 ? (
-          <Button variant="secondary" className="mt-4" onClick={() => setConfirming(true)} disabled={busy} data-testid="clear-demo">
-            Remove sample journal
-          </Button>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => setConfirming(true)} disabled={busy} data-testid="clear-demo">
+              Remove sample data
+            </Button>
+            <Button variant="ghost" onClick={() => void run('seedDemo')} loading={busy} data-testid="reload-demo">
+              Reload (dates move to today)
+            </Button>
+          </div>
         ) : (
           <Button variant="secondary" className="mt-4" onClick={() => void run('seedDemo')} loading={busy}>
-            Load sample journal
+            Load two weeks of sample data
           </Button>
         )}
       </section>
@@ -87,8 +92,8 @@ export default function SettingsPage() {
         open={confirming}
         onClose={() => setConfirming(false)}
         onConfirm={() => void run('clearDemo')}
-        title="Remove the sample journal?"
-        description="Only the sample entries are removed. Your own entries stay."
+        title="Remove the sample data?"
+        description="The sample journal, Mia and her pages are removed. Your own entries stay."
         confirmText="Remove"
         loading={busy}
       />

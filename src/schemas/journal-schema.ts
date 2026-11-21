@@ -46,6 +46,8 @@ export const entriesSchema: CollectionSchema = {
     { name: 'recalls', storage: 'text', interpretation: { kind: 'json' } },
     { name: 'riskFlag', storage: 'number', interpretation: { kind: 'boolean' } },
     { name: 'isDemo', storage: 'number', interpretation: { kind: 'boolean' } },
+    /** A photo on the entry: `{ key }` for an upload in the owner's private folder, `{ demo }` for a bundled sample. */
+    { name: 'photo', storage: 'text', interpretation: { kind: 'json' } },
     /** Friends this entry is shared with (exchange diary). Empty = private. */
     { name: 'sharedWith', storage: 'text', interpretation: { kind: 'json' } },
   ],

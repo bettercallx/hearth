@@ -5,6 +5,7 @@ import { callAction, formatDay, speak } from '@/lib/client'
 import type { Entry } from '@/lib/types'
 import { useMutations, useQuery, useUserLookup } from 'deepspace'
 import { joinNames, useFriends } from '@/lib/social'
+import { EntryPhoto } from './EntryPhoto'
 import { ConfirmModal, Popover, PopoverContent, PopoverTrigger, useToast } from '@/components/ui'
 import { EMPTY_SIGNALS } from '@/lib/signals'
 
@@ -266,6 +267,7 @@ export function EntryCard({
       {open && (
         <div id={`entry-body-${id}`} className="mt-3 space-y-3 border-t border-border pt-3">
           <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{entry.text}</p>
+          {entry.photo && <EntryPhoto entryId={id} photo={entry.photo} tilt={-2} className="ml-1" />}
           {entry.reflection && !entry.riskFlag && (
             <p className="font-display text-[15px] italic leading-relaxed text-foreground/90">“{entry.reflection}”</p>
           )}

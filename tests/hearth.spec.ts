@@ -48,7 +48,39 @@ async function writeEntry(page: Page, text: string, opts: { share?: boolean; day
   return id
 }
 
+/** The invite link on /exchange, creating one if needed (behind "Invite a friend" once you have a notebook). */
+async function openInvite(page: Page) {
+  const invite = page.getByTestId('invite-link')
+  const create = page.getByTestId('create-invite')
+  const opener = page.getByRole('button', { name: 'Invite a friend' })
+  await expect(invite.or(create).or(opener)).toBeVisible({ timeout: 20_000 })
+  if (await opener.isVisible()) await opener.click()
+  await expect(invite.or(create)).toBeVisible()
+  if (await create.isVisible()) await create.click()
+  await expect(invite).toBeVisible()
+  return invite
+}
+
+/** Habits each test made, by page; deleted in afterEach even when an assertion failed. */
+const habitsMade = new Map<Page, string[]>()
+
+/** Delete every habit on the page whose name contains `match`. */
+async function deleteHabits(page: Page, match: string) {
+  await page.goto('/insights#habits')
+  // Wait for the habit list itself, not just the section: counting a loading list finds nothing.
+  await expect(page.locator('[data-testid="habits"][data-ready="true"]')).toBeVisible({ timeout: 15_000 })
+  const habit = page.getByTestId('habit-card').filter({ hasText: match })
+  while ((await habit.count()) > 0) {
+    const before = await habit.count()
+    await habit.first().getByRole('button', { name: 'Delete habit' }).click()
+    await page.getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(habit).toHaveCount(before - 1)
+  }
+}
+
 test.afterEach(async () => {
+  for (const [page, names] of habitsMade) for (const name of names) await deleteHabits(page, name)
+  habitsMade.clear()
   for (const [page, ids] of created) {
     await page.unroute('**/api/actions/analyzeEntry').catch(() => {})
     for (const { id, date } of ids) {
@@ -67,14 +99,14 @@ test('sample journal surfaces the lunch → afternoon energy pattern with eviden
   const [alice] = await users(['Alice'])
   const page = alice.page
   await page.goto('/settings')
-  // Idempotent: load the sample journal if this account doesn't have it yet.
-  const load = page.getByRole('button', { name: 'Load sample journal' })
-  const remove = page.getByTestId('clear-demo')
-  await expect(load.or(remove)).toBeVisible({ timeout: 20_000 })
-  if (await load.isVisible()) {
-    await load.click()
-    await expect(remove).toBeVisible({ timeout: 30_000 })
-  }
+  // Load the sample, or reload it so dates line up with today and it's the current version.
+  const load = page.getByRole('button', { name: 'Load two weeks of sample data' })
+  const reload = page.getByTestId('reload-demo')
+  await expect(load.or(reload)).toBeVisible({ timeout: 20_000 })
+  const seeded = page.waitForResponse((r) => r.url().endsWith('/api/actions/seedDemo'), { timeout: 60_000 })
+  await ((await load.isVisible()) ? load : reload).click()
+  expect(((await (await seeded).json()) as { success: boolean }).success).toBe(true)
+  await expect(page.getByTestId('clear-demo')).toBeVisible({ timeout: 30_000 })
 
   await page.goto('/insights')
   // Month calendar: sample days are colored and open a day summary on tap.
@@ -102,11 +134,9 @@ test('sample journal surfaces the lunch → afternoon energy pattern with eviden
   await page.getByRole('combobox').click()
   await page.getByRole('option', { name: 'Lunch on time' }).click()
   await page.getByTestId('save-habit').click()
+  habitsMade.set(page, [habitName])
   const habit = page.getByTestId('habit-card').filter({ hasText: habitName })
-  await expect(habit.getByTestId('habit-status')).toContainText('6 of the last 14 days')
-  await habit.getByRole('button', { name: 'Delete habit' }).click()
-  await page.getByRole('button', { name: 'Delete', exact: true }).click()
-  await expect(habit).toHaveCount(0)
+  await expect(habit.getByTestId('habit-status')).toContainText('7 of the last 14 days')
 })
 
 test('correcting a mood updates the calendar and the patterns, live', async ({ users }) => {
@@ -134,18 +164,12 @@ test('correcting a mood updates the calendar and the patterns, live', async ({ u
 })
 
 
-/** Delete a habit by name from Looking back's habits section. */
-async function deleteHabit(page: Page, name: string) {
-  await page.goto('/insights#habits')
-  const habit = page.getByTestId('habit-card').filter({ hasText: name })
-  await habit.first().getByRole('button', { name: 'Delete habit' }).click()
-  await page.getByRole('button', { name: 'Delete', exact: true }).click()
-  await expect(habit).toHaveCount(0)
-}
-
 test('after an entry: memory link, a nudge from your own pattern, and a habit check-in', async ({ users }) => {
   const [alice] = await users(['Alice'])
   const page = alice.page
+  // A lunch habit left by an interrupted run would (correctly) change the nudge; start clean.
+  await deleteHabits(page, '__test-')
+  await deleteHabits(page, 'Lunch before 1pm')
   await writeEntry(page, `__test-${Date.now()}__ Back-to-back meetings again and I skipped lunch. Totally foggy by 3pm.`)
   await expect(page.getByTestId('reflection')).toBeVisible({ timeout: 60_000 })
 
@@ -160,11 +184,10 @@ test('after an entry: memory link, a nudge from your own pattern, and a habit ch
   await expect(page.getByTestId('recall-link')).toHaveAttribute('href', /\/insights\?day=\d{4}-\d{2}-\d{2}/)
 
   // Taking the suggestion creates the habit, and the check-in reflects today honestly.
+  habitsMade.set(page, ['Lunch before 1pm'])
   await page.getByTestId('adopt-nudge').click()
   await expect(nudge).toContainText('This is what “Lunch before 1pm” is for')
   await expect(page.getByTestId('habit-checkins')).toContainText('Lunch before 1pm')
-
-  await deleteHabit(page, 'Lunch before 1pm')
 })
 
 test('never miss twice: a slipped habit yesterday gets a gentle line before writing', async ({ users }) => {
@@ -174,6 +197,7 @@ test('never miss twice: a slipped habit yesterday gets a gentle line before writ
   await page.goto('/insights#habits')
   await page.getByTestId('new-habit').click()
   const name = `__test-${Date.now()}__ lunch`
+  habitsMade.set(page, [name])
   await page.getByTestId('habit-name').fill(name)
   await page.getByRole('combobox').click()
   await page.getByRole('option', { name: 'Lunch on time' }).click()
@@ -185,8 +209,6 @@ test('never miss twice: a slipped habit yesterday gets a gentle line before writ
 
   await page.goto('/home')
   await expect(page.getByTestId('never-miss-twice')).toContainText('Yesterday slipped on lunch on time', { timeout: 15_000 })
-
-  await deleteHabit(page, name)
 })
 
 test('writing an entry gets a reflection, mood tags and a summary back', async ({ users }) => {
@@ -267,10 +289,7 @@ test('exchange diary: pair by link, share selectively, reply live, unpair revoke
 
   // Alice creates an invite link; Bob opens it and accepts.
   await alice.page.goto('/exchange')
-  const invite = alice.page.getByTestId('invite-link')
-  const create = alice.page.getByTestId('create-invite')
-  await expect(invite.or(create)).toBeVisible({ timeout: 20_000 })
-  if (await create.isVisible()) await create.click()
+  const invite = await openInvite(alice.page)
   const link = await invite.inputValue()
   const code = new URL(link).searchParams.get('invite')
   expect(code).toBeTruthy()
@@ -278,7 +297,8 @@ test('exchange diary: pair by link, share selectively, reply live, unpair revoke
   await bob.page.goto(`/exchange?invite=${code}`)
   await bob.page.getByTestId('accept-invite').getByRole('button', { name: 'Accept' }).click()
   await expect(bob.page.getByTestId('friend-name')).toContainText('Alice', { timeout: 15_000 })
-  await expect(alice.page.getByTestId('friend-name')).toContainText('Bob', { timeout: 15_000 })
+  // Alice also has the sample friend, so her notebooks are tabs.
+  await expect(alice.page.getByTestId('friend-name').filter({ hasText: 'Bob' })).toBeVisible({ timeout: 15_000 })
 
   // One shared entry, one private one. The toggle is sticky, so set it each time.
   const sharedMarker = `__test-${Date.now()}__ shared-with-bob`
@@ -295,6 +315,7 @@ test('exchange diary: pair by link, share selectively, reply live, unpair revoke
   await expect(bob.page.getByText(privateMarker)).toHaveCount(0)
   // …and none of it leaks into Bob's own journal.
   await card.getByRole('button', { name: 'React with 🤗' }).click()
+  await card.getByRole('button', { name: 'write back…' }).click()
   await card.getByTestId('reply-input').fill('Glad dinner helped')
   await card.getByRole('button', { name: 'Send reply' }).click()
   await expect(card.getByTestId('replies')).toContainText('Glad dinner helped')
@@ -320,5 +341,51 @@ test('exchange diary: pair by link, share selectively, reply live, unpair revoke
 
   await alice.page.goto(`/insights?day=${today()}`)
   await expect(own).toBeVisible({ timeout: 15_000 })
-  await expect(own.getByTestId('shared-badge')).toHaveCount(0)
+  await expect(own.getByTestId('shared-badge')).not.toContainText('Bob')
+})
+
+test('exchange diary photos: taped in for a friend, private to the two of you, gone on unpair', async ({ users }) => {
+  const [alice, bob] = await users(['Alice', 'Bob'])
+  // Each side's bearer token, from a request it makes anyway.
+  const bearer = (page: Page) =>
+    page.waitForRequest((r) => r.url().includes('/api/actions/') && !!r.headers()['authorization']).then((r) => r.headers()['authorization'])
+
+  await alice.page.goto('/exchange')
+  const invite = await openInvite(alice.page)
+  const code = new URL(await invite.inputValue()).searchParams.get('invite')
+  await bob.page.goto(`/exchange?invite=${code}`)
+  const bobToken = bearer(bob.page)
+  await bob.page.getByTestId('accept-invite').getByRole('button', { name: 'Accept' }).click()
+  const bobAuth = await bobToken
+
+  // The sample friend's sketches are in Alice's notebook with Mia.
+  await alice.page.reload()
+  await alice.page.getByTestId('friend-name').filter({ hasText: 'Mia' }).click()
+  await expect(alice.page.locator('[data-testid="entry-photo"] img[src="/demo/cake.svg"]')).toBeVisible({ timeout: 15_000 })
+
+  // Alice writes a page with a photo in Bob's notebook.
+  await alice.page.getByTestId('friend-name').filter({ hasText: 'Bob' }).click()
+  const marker = `__test-${Date.now()}__ photo page`
+  await alice.page.getByTestId('page-input').fill(`${marker} Today's thumbnail sketch!`)
+  await alice.page.getByTestId('photo-input').setInputFiles('tests/fixtures/sketch.png')
+  const analyzed = alice.page.waitForRequest((r) => r.url().endsWith('/api/actions/analyzeEntry'))
+  await alice.page.getByTestId('pass-notebook').click()
+  const call = await analyzed
+  const pageId = (JSON.parse(call.postData() ?? '{}') as { entryId: string }).entryId
+  created.set(alice.page, [...(created.get(alice.page) ?? []), { id: pageId, date: today() }])
+
+  // Bob sees it in his notebook, the photo fetched through the access check.
+  await bob.page.goto('/exchange')
+  const page = bob.page.locator(`[data-testid="shared-entry"][data-entry-id="${pageId}"]`)
+  await expect(page).toContainText(marker, { timeout: 20_000 })
+  await expect(page.locator('[data-testid="entry-photo"] img')).toHaveAttribute('src', /^blob:/, { timeout: 15_000 })
+  expect((await bob.page.request.get(`/api/photos/${pageId}`, { headers: { authorization: bobAuth } })).status()).toBe(200)
+  // No token, no photo.
+  expect((await bob.page.request.get(`/api/photos/${pageId}`)).status()).toBe(401)
+
+  // Unpairing takes the photo back along with the page.
+  await bob.page.getByRole('button', { name: 'Unpair' }).first().click()
+  await bob.page.getByRole('button', { name: 'Unpair', exact: true }).last().click()
+  await expect(page).toHaveCount(0, { timeout: 15_000 })
+  expect((await bob.page.request.get(`/api/photos/${pageId}`, { headers: { authorization: bobAuth } })).status()).toBe(404)
 })

@@ -14,7 +14,7 @@ Built on the [DeepSpace SDK](https://docs.deep.space).
 | **Today** (`/home`) | A notebook page: talk (a hairline under the prompt becomes a live waveform) or write, about today or any of the last seven days. Each entry gets a short reflection that **refers back to a similar past day when there is one** (with a link to it), mood tags, a summary, and an optional spoken reply. Right after, a habit check-in and at most one **"for tomorrow" nudge** when today landed on the wrong side of one of your own patterns, with a one-tap habit. Before writing, a **never-miss-twice** line if a habit slipped yesterday, and a notice when Hearth has written you a letter. Crisis language shows 988 / findahelpline resources instead of analysis. |
 | **Looking back** | The journal, habits, patterns and letters in one place. A **month calendar** (from November 2026) colors each day by mood; tap a day to read, delete, share, or **correct the mood** of its entries — corrections feed the pattern analysis. Below: a mood/energy chart and **patterns** over 7/10/14 days, each with its numbers, a confidence level, and links to the supporting days. Ask Hearth for a **letter** about these days: Claude writes it in the first person around the computed patterns, with an identity line, highlights, and up to three Atomic Habits suggestions tied to specific patterns. A weekly letter also arrives by cron every Sunday. Small habits live here too. |
 | **Habits** (in Looking back) | Identity, habit stack, two-minute version, and a signal Hearth listens for (lunch on time, 7h sleep, moved, outside, connected, screens down). Tracked automatically from entries; streaks and "never miss twice". |
-| **Exchange** | An exchange diary with a friend, paired by a one-time invite link. One journal, no double writing: a sticky "also shared with …" switch next to Save decides per entry, and entries can be shared or made private later. Friends reply with a line or a reaction, live. Unpairing revokes everything both ways. Crisis-flagged entries are never shared. |
+| **Exchange** | A school-notebook exchange diary with a friend, paired by a one-time invite link: ruled paper, your pen and theirs, photos taped in as polaroids, replies written under each page. A page written here is also a journal entry. One journal, no double writing: a sticky "also shared with …" switch next to Save decides per entry, and entries can be shared or made private later. Friends reply with a line or a reaction, live. Unpairing revokes everything both ways. Crisis-flagged entries are never shared. |
 
 ## How the analysis works
 
@@ -40,13 +40,24 @@ Built on the [DeepSpace SDK](https://docs.deep.space).
    words around them. Pattern ids, dates and habit signals in its output are
    validated against what was computed; anything invented is dropped.
 
+## Sample data
+
+One button (Today's first-run card, Settings, or the empty Exchange page) loads two
+weeks of a freelance designer's journal plus an exchange diary with **Mia**, a
+sample friend, with sketches and replies both ways, so one account shows every
+feature. Mia is not an account: her rows carry the id `demo-mia`, are written only
+by `seedDemo`, are skipped by the weekly letters, and `clearDemo` removes them.
+
 ## Privacy
 
 `entries`, `insights` and `habits` are owner-only for every role **including
 admin** (`src/schemas/journal-schema.ts`). The one exception is an entry the
 owner shares: `sharedWith` is a server-enforced collaborator list, so a friend
 receives exactly those rows over the socket and nothing else. Replies are
-visible only to their author and the entry's owner. Server actions run RBAC-off, so each
+visible only to their author and the entry's owner. Photos are stored in the
+uploader's private file folder; friends receive them only through
+`/api/photos/:entryId`, which serves the bytes only to someone who may read the
+entry, so unsharing or unpairing takes the photo back too. Server actions run RBAC-off, so each
 one checks the caller owns the record it touches. Cron writes are scoped per user.
 Risk-flagged entries are never quoted to the look-back model.
 

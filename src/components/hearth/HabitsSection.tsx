@@ -45,7 +45,7 @@ export function HabitsSection() {
   )
 
   return (
-    <section id="habits" data-testid="habits" className="scroll-mt-6">
+    <section id="habits" data-testid="habits" data-ready={status === 'ready'} className="scroll-mt-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="font-display text-2xl font-light text-foreground">Small habits</h2>

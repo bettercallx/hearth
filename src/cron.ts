@@ -14,6 +14,7 @@ import type { Env } from '../worker'
 import { anthropicBody, anthropicText, type Complete } from './server/journal-ai'
 import { buildInsight, MIN_DAYS_FOR_INSIGHT, type EntryRow } from './server/insight'
 import { addDays } from './lib/patterns'
+import { isDemoUser } from './lib/demo-friend'
 
 const TIMEZONE = 'America/New_York'
 
@@ -44,7 +45,8 @@ export async function runTask(name: string, env: Env): Promise<void> {
   // Group this week's rows by person; skip anyone already done (a re-run is idempotent).
   const byUser = new Map<string, EntryRow[]>()
   for (const e of entries) {
-    if (e.data.entryDate < start || e.data.entryDate > end || done.has(e.data.userId)) continue
+    // The sample friend is not a person: never spend a letter on her.
+    if (e.data.entryDate < start || e.data.entryDate > end || done.has(e.data.userId) || isDemoUser(e.data.userId)) continue
     byUser.set(e.data.userId, [...(byUser.get(e.data.userId) ?? []), e.data])
   }
 

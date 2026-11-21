@@ -1,6 +1,8 @@
 import type { ActionHandler, ActionTools } from 'deepspace/worker'
 import type { Env } from '../../worker'
-import { DEMO_ENTRIES } from '../lib/demo'
+import { DEMO_ENTRIES, DEMO_FRIEND_ENTRIES, DEMO_REPLIES } from '../lib/demo'
+import { DEMO_FRIEND } from '../lib/demo-friend'
+import { createActionTools } from '../server/action-routes'
 import { addDays } from '../lib/patterns'
 import {
   analyzeEntryText,
@@ -147,16 +149,24 @@ const generateInsight: ActionHandler<Env> = async ({ userId, params, tools }) =>
   }
 }
 
-/** Fill the caller's journal with the ten demo days ending yesterday. */
-const seedDemo: ActionHandler<Env> = async ({ userId, params, tools }) => {
+/**
+ * Two weeks of sample data ending yesterday: the caller's journal, plus an
+ * exchange diary with the sample friend (her entries, sketches and replies).
+ * Loading again replaces the old sample, so it also upgrades older demos.
+ */
+const seedDemo: ActionHandler<Env> = async (ctx) => {
+  const { userId, params, tools, env, callerJwt } = ctx
   const today = typeof params.today === 'string' && DATE_RE.test(params.today) ? params.today : null
   if (!today) return { success: false, error: 'Invalid date' }
 
-  const rows = await ownEntries(tools, userId)
-  if (rows.some((r) => r.data.isDemo)) return { success: true, data: { created: 0 } }
+  await removeDemo(tools, userId)
 
   const first = addDays(today, -DEMO_ENTRIES.length)
-  let created = 0
+  const friend = DEMO_FRIEND.id
+  // Writes as the sample friend: her id is stamped on her rows like any author's.
+  const asFriend = createActionTools(env, friend, callerJwt)
+
+  const mine: string[] = []
   for (const [i, e] of DEMO_ENTRIES.entries()) {
     const r = await tools.create('entries', {
       userId,
@@ -171,18 +181,71 @@ const seedDemo: ActionHandler<Env> = async ({ userId, params, tools }) => {
       signals: e.signals,
       riskFlag: false,
       isDemo: true,
-      sharedWith: [],
+      sharedWith: e.shared ? [friend] : [],
     })
-    if (r.success) created++
+    mine.push(r.success ? r.data.recordId : '')
   }
-  return { success: true, data: { created } }
+
+  const theirs: string[] = []
+  for (const e of DEMO_FRIEND_ENTRIES) {
+    const r = await asFriend.create('entries', {
+      userId: friend,
+      text: e.text,
+      entryDate: addDays(first, e.day),
+      source: 'text',
+      status: 'analyzed',
+      mood: e.mood,
+      moodTags: e.moodTags,
+      isDemo: true,
+      sharedWith: [userId],
+      photo: e.photo ? { demo: e.photo } : null,
+    })
+    theirs.push(r.success ? r.data.recordId : '')
+  }
+
+  await tools.create('friendships', { members: [userId, friend] })
+
+  for (const reply of DEMO_REPLIES) {
+    const entryId = 'mine' in reply.on ? mine[reply.on.mine] : theirs[reply.on.friend]
+    if (!entryId) continue
+    const author = reply.from === 'me' ? tools : asFriend
+    await author.create('replies', {
+      userId: reply.from === 'me' ? userId : friend,
+      entryId,
+      text: reply.text ?? '',
+      emoji: reply.emoji ?? '',
+      participants: [userId, friend],
+    })
+  }
+
+  return { success: true, data: { created: mine.filter(Boolean).length + theirs.filter(Boolean).length } }
+}
+
+/** Everything the sample put in this person's account, and nothing else. */
+async function removeDemo(tools: ActionTools, userId: string) {
+  const friend = DEMO_FRIEND.id
+  const mineDemo = (await ownEntries(tools, userId)).filter((r) => r.data.isDemo)
+  const theirs = (await ownEntries(tools, friend)).filter(
+    (r) => r.data.isDemo && Array.isArray(r.data.sharedWith) && r.data.sharedWith.includes(userId),
+  )
+  const entryIds = new Set([...mineDemo, ...theirs].map((r) => r.recordId))
+
+  const replies = await tools.query<{ entryId: string; participants: string[] }>('replies', { limit: 2000 })
+  if (replies.success) {
+    for (const r of replies.data.records) {
+      const between = Array.isArray(r.data.participants) && r.data.participants.includes(userId) && r.data.participants.includes(friend)
+      if (entryIds.has(r.data.entryId) || between) await tools.remove('replies', r.recordId)
+    }
+  }
+  for (const id of entryIds) await tools.remove('entries', id)
+  for (const f of await friendshipsOf(tools, userId)) {
+    if (f.data.members.includes(friend)) await tools.remove('friendships', f.recordId)
+  }
+  return entryIds.size
 }
 
 const clearDemo: ActionHandler<Env> = async ({ userId, tools }) => {
-  const rows = await ownEntries(tools, userId)
-  const demo = rows.filter((r) => r.data.isDemo)
-  for (const r of demo) await tools.remove('entries', r.recordId)
-  return { success: true, data: { removed: demo.length } }
+  return { success: true, data: { removed: await removeDemo(tools, userId) } }
 }
 
 // ── Exchange diary ─────────────────────────────────────────────────────────

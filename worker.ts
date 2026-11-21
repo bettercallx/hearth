@@ -33,6 +33,7 @@ import {
   resolveAuth,
 } from './src/server/http-routes.js'
 import { registerRealtimeRoutes } from './src/server/realtime-routes.js'
+import { registerPhotoRoutes } from './src/server/photo-routes.js'
 
 // Dynamic deploy reads this manifest to create the app's DO bindings.
 export const __DO_MANIFEST__ = [
@@ -143,6 +144,7 @@ registerAgent(app, {
   tools: buildTools,
   inApp: schemas.some((schema) => schema.name === AI_CHATS_SCHEMA.name),
 })
+registerPhotoRoutes(app)
 registerPlatformProxyRoutes(app)
 registerStaticRoutes(app)
 

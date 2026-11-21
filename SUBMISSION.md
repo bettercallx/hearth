@@ -29,6 +29,8 @@ reply to each other live.
   `unpair` revokes sharing in both directions.
 - **AI integration** (`anthropic/chat-completion`): Haiku for per-entry
   analysis, Sonnet for look-backs.
+- **File storage (R2)**: photos taped into the exchange diary, private to the
+  two friends through an access-checked route.
 - **Speech integrations**: `speech/speech-to-text` for voice entries and
   `speech/text-to-speech` for a spoken reflection.
 - **Cron** (`CronRoom`): weekly look-backs every Sunday, with an admin-only

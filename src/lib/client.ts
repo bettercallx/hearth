@@ -95,3 +95,36 @@ export async function speak(text: string): Promise<string> {
   if (!r.success || !r.data?.audioUrl) throw new Error(r.success ? 'No audio returned' : r.error)
   return r.data.audioUrl
 }
+
+/** Longest edge for an uploaded photo: enough for a polaroid, small enough to send quickly. */
+const PHOTO_MAX_EDGE = 1600
+
+/**
+ * Downscale a photo to JPEG before upload. Formats the browser can't decode
+ * (some HEIC) go up as they are.
+ */
+export async function shrinkPhoto(file: File): Promise<File> {
+  try {
+    const bitmap = await createImageBitmap(file)
+    const scale = Math.min(1, PHOTO_MAX_EDGE / Math.max(bitmap.width, bitmap.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(bitmap.width * scale)
+    canvas.height = Math.round(bitmap.height * scale)
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85))
+    return blob ? new File([blob], 'photo.jpg', { type: 'image/jpeg' }) : file
+  } catch {
+    return file
+  }
+}
+
+/** A private photo, fetched with the caller's token (an <img> can't send one). */
+export async function fetchEntryPhoto(entryId: string, signal?: AbortSignal): Promise<string> {
+  const token = await getAuthToken()
+  const res = await fetch(`/api/photos/${entryId}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    signal,
+  })
+  if (!res.ok) throw new Error(`Photo unavailable (${res.status})`)
+  return URL.createObjectURL(await res.blob())
+}

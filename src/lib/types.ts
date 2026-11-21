@@ -19,6 +19,7 @@ export type Entry = {
   isDemo?: boolean
   /** Friends this entry is shared with in the exchange diary; empty = private. */
   sharedWith?: string[]
+  photo?: { key?: string; demo?: string } | null
 }
 
 export type Insight = {

@@ -199,7 +199,7 @@ function Companion() {
     setSeeding(true)
     try {
       const r = await callAction<{ created: number }>('seedDemo', { today })
-      success('Sample journal added', `${r.created} days of sample entries are in your journal.`)
+      success('Sample data loaded', `${r.created} sample pages: two weeks of journal and an exchange diary with Mia.`)
     } catch (e) {
       error('Could not add the sample journal', e instanceof Error ? e.message : undefined)
     } finally {
@@ -240,8 +240,9 @@ function Companion() {
         <div data-testid="first-run" className="mt-6 rounded-xl border border-border bg-card p-5">
           <p className="text-[15px] text-foreground">New here? Give Hearth something to remember.</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Load ten days of a sample journal, then tell it about your day. It will connect today to those days and
-            suggest one small thing for tomorrow. Remove the sample any time in Settings.
+            Load two weeks of sample data (a freelance designer's journal, plus an exchange diary with a friend), then
+            tell Hearth about your day. It will connect today to those days and suggest one small thing for tomorrow.
+            Remove the sample any time in Settings.
           </p>
           <Button
             variant="secondary"
@@ -251,7 +252,7 @@ function Companion() {
             loading={seeding}
             data-testid="seed-demo"
           >
-            Load a sample journal
+            Load two weeks of sample data
           </Button>
         </div>
       )}

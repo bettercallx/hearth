@@ -56,6 +56,11 @@
   --hearth-mood-5: #d9a63c;
 }
 
+/* Handwriting for the exchange diary: a ballpoint on a school notebook. */
+.font-pen {
+  font-family: 'Nanum Pen Script', 'Comic Sans MS', cursive;
+}
+
 .font-display {
   font-family: 'Fraunces', ui-serif, Georgia, serif;
   font-optical-sizing: auto;
