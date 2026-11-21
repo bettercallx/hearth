@@ -118,6 +118,9 @@ export default function InsightsPage() {
   return (
     <div className="mx-auto max-w-5xl px-5 pb-24 pt-10">
       <h1 className="sr-only">Looking back</h1>
+      {/* Habits lead: this page is first about what you're building. */}
+      <HabitsSection />
+      <div className="mt-14 border-t border-border pt-10" />
       {status === 'loading' ? (
         <div className="h-80 animate-pulse rounded-2xl bg-muted" />
       ) : (
@@ -168,9 +171,6 @@ export default function InsightsPage() {
       )}
       {/* Everything below the calendar shares its full width. */}
       <div>
-        <div className="mt-14 border-t border-border pt-10">
-          <HabitsSection />
-        </div>
 
       <div className="mt-14 flex flex-wrap items-end justify-between gap-4 border-t border-border pt-10">
         <div>

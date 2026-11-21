@@ -59,13 +59,14 @@
   --hearth-mood-4: #a3c78d;
   --hearth-mood-5: #5f9152;
 
-  /* Energy is magnitude: one blue, light to dark (OKLab L 0.94 → 0.47, evenly
-   * stepped), so it never competes with the mood colours. */
-  --hearth-energy-1: #e4eaf3;
-  --hearth-energy-2: #c3d1e6;
-  --hearth-energy-3: #93aed3;
-  --hearth-energy-4: #5d83ba;
-  --hearth-energy-5: #365a8f;
+  /* Energy is magnitude, read as sunlight: one honey-to-amber hue, light to
+   * deep (OKLab L 0.92 → 0.61, monotonic). Warm like the mood colours but far
+   * more saturated, so the two never read as the same scale. */
+  --hearth-energy-1: #fce3a0;
+  --hearth-energy-2: #f9cc5e;
+  --hearth-energy-3: #f3ad34;
+  --hearth-energy-4: #eb8f16;
+  --hearth-energy-5: #cc5f00;
 }
 
 /* Handwriting for the exchange diary: a ballpoint on a school notebook. */

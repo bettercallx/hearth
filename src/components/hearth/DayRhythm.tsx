@@ -1,7 +1,7 @@
 /**
  * Energy & mood as a grid, in the calendar's language: one column per day,
  * a mood row on top (the mood colours) and a row per part of the day for
- * energy (one blue, light to dark). Beside it, the average energy for each
+ * energy (honey to amber). Cells keep one size whatever the range. Beside it, the average energy for each
  * part of the day as horizontal bars, so "afternoons are my low point" reads
  * at a glance. Gaps stay visibly empty: a day not written is not a low day.
  */
@@ -26,6 +26,8 @@ const PARTS = [
 const ENERGY_WORDS = ['very low', 'low', 'some', 'good', 'high']
 /** How much lower (on the 1–5 scale) a part of the day must be to be called the low point. */
 const LOW_POINT_GAP = 0.2
+/** One day's cell: the size a 14-day range has on a laptop. */
+const CELL = '2.25rem'
 const energyColor = (v: number) => `var(--hearth-energy-${Math.min(5, Math.max(1, Math.round(v)))})`
 const energyWord = (v: number) => ENERGY_WORDS[Math.min(4, Math.max(0, Math.round(v) - 1))]
 
@@ -52,12 +54,13 @@ export function DayRhythm({ days }: { days: RhythmDay[] }) {
   // Name a low point only when one part of the day is clearly lower than the rest.
   const known = [...averages.filter((a) => a.avg !== null)].sort((a, b) => (a.avg as number) - (b.avg as number))
   const lowest = known.length > 1 && (known[1].avg as number) - (known[0].avg as number) >= LOW_POINT_GAP ? known[0] : null
-  const cols = { gridTemplateColumns: `5.5rem repeat(${days.length}, minmax(0, 1fr))` }
+  // A fixed cell size: 7, 10 or 14 days, a day always looks the same.
+  const cols = { gridTemplateColumns: `4.75rem repeat(${days.length}, ${CELL})` }
 
   return (
-    <div data-testid="day-rhythm" className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_15rem]">
+    <div data-testid="day-rhythm" className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_14rem]">
       <figure className="m-0 overflow-x-auto">
-        <div className="min-w-[30rem] space-y-1.5">
+        <div className="w-max space-y-1.5">
           <div className="grid items-center gap-1.5" style={cols}>
             <span className="text-xs font-medium text-foreground">Mood</span>
             {days.map((d) => (
