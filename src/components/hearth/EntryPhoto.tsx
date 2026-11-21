@@ -49,11 +49,16 @@ export function EntryPhoto({
       style={{ transform: `rotate(${tilt}deg)` }}
     >
       <span aria-hidden className="absolute -top-2.5 left-1/2 h-5 w-16 -translate-x-1/2 rotate-[-3deg] bg-[#fff0a0]/85" />
-      {src ? (
-        <img src={src} alt={caption ? `Photo: ${caption}` : 'Photo shared in the diary'} className="block aspect-[4/3] w-full object-cover" />
+      {src && !failed ? (
+        <img
+          src={src}
+          alt={caption ? `Photo: ${caption}` : 'Photo shared in the diary'}
+          onError={() => setFailed(true)}
+          className="block aspect-[4/3] w-full object-cover"
+        />
       ) : (
         <div className="flex aspect-[4/3] w-full items-center justify-center bg-[#f4f4ec] text-xs text-muted-foreground">
-          {failed ? 'Photo unavailable' : 'Developing…'}
+          {failed ? "This photo can't be shown here" : 'Developing…'}
         </div>
       )}
       {caption && (

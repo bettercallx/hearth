@@ -389,3 +389,29 @@ test('exchange diary photos: taped in for a friend, private to the two of you, g
   await expect(page).toHaveCount(0, { timeout: 15_000 })
   expect((await bob.page.request.get(`/api/photos/${pageId}`, { headers: { authorization: bobAuth } })).status()).toBe(404)
 })
+
+test('an iPhone photo (HEIC named .JPG) is converted and shows in the notebook', async ({ users }) => {
+  const [alice] = await users(['Alice'])
+  const page = alice.page
+  await page.goto('/exchange')
+  // Alice's sample notebook with Mia is enough: the page is hers either way.
+  await expect(page.getByTestId('page-input')).toBeVisible({ timeout: 20_000 })
+  await page.getByTestId('page-input').fill(`__test-${Date.now()}__ iphone photo`)
+  await page.getByTestId('photo-input').setInputFiles('tests/fixtures/iphone-photo.JPG')
+  // Converted in the browser: the preview is a real, decodable image.
+  const preview = page.getByRole('img', { name: 'Photo to tape in' })
+  await expect(preview).toBeVisible({ timeout: 30_000 })
+  expect(await preview.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0)
+
+  const upload = page.waitForResponse((r) => r.url().includes('/api/files/upload'))
+  const analyzed = page.waitForRequest((r) => r.url().endsWith('/api/actions/analyzeEntry'))
+  await page.getByTestId('pass-notebook').click()
+  // What's stored is the JPEG, not the original HEIC.
+  expect(((await (await upload).json()) as { key: string }).key).toMatch(/photo\.jpg$/)
+  const id = (JSON.parse((await analyzed).postData() ?? '{}') as { entryId: string }).entryId
+  created.set(page, [...(created.get(page) ?? []), { id, date: today() }])
+
+  const img = page.locator(`[data-entry-id="${id}"] [data-testid="entry-photo"] img`)
+  await expect(img).toHaveAttribute('src', /^blob:/, { timeout: 15_000 })
+  await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0)
+})

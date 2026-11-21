@@ -13,7 +13,7 @@ import { Camera, Copy, Link2, UserMinus, X } from 'lucide-react'
 import { Button, ConfirmModal, Input, useToast } from '@/components/ui'
 import type { Reply } from '@/components/hearth/bits'
 import { EntryPhoto } from '@/components/hearth/EntryPhoto'
-import { callAction, formatDay, localToday, shrinkPhoto } from '@/lib/client'
+import { callAction, formatDay, localToday, preparePhoto } from '@/lib/client'
 import { REACTIONS, displayName, useFriends, type Friend } from '@/lib/social'
 import type { Entry } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -313,15 +313,24 @@ function WritePage({ friend }: { friend: Friend }) {
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [developing, setDeveloping] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const first = friend.name.split(' ')[0]
 
   const pick = async (file: File | undefined) => {
+    if (fileRef.current) fileRef.current.value = ''
     if (!file) return
-    if (preview) URL.revokeObjectURL(preview)
-    const small = await shrinkPhoto(file)
-    setPhoto(small)
-    setPreview(URL.createObjectURL(small))
+    setDeveloping(true)
+    try {
+      const ready = await preparePhoto(file)
+      if (preview) URL.revokeObjectURL(preview)
+      setPhoto(ready)
+      setPreview(URL.createObjectURL(ready))
+    } catch (e) {
+      error('Could not use that photo', e instanceof Error ? e.message : undefined)
+    } finally {
+      setDeveloping(false)
+    }
   }
 
   const clearPhoto = () => {
@@ -375,6 +384,11 @@ function WritePage({ friend }: { friend: Friend }) {
         className="block w-full resize-y border-0 bg-transparent p-0 font-pen text-[29px] leading-9 placeholder:text-[#8995a3] focus:outline-none"
         style={{ color: PEN_ME }}
       />
+      {developing && !preview && (
+        <p data-testid="photo-developing" className="my-3 font-pen text-[24px] text-[#4d5866]">
+          developing your photo…
+        </p>
+      )}
       {preview && (
         <div className="relative my-4 ml-2 inline-block">
           <figure className="m-0 w-52 rotate-[-3deg] bg-white p-2 pb-8 shadow-[0_5px_14px_-6px_rgba(30,40,55,0.4)]">
@@ -413,7 +427,7 @@ function WritePage({ friend }: { friend: Friend }) {
           type="button"
           data-testid="pass-notebook"
           onClick={() => void pass()}
-          disabled={!ready || !text.trim() || busy}
+          disabled={!ready || !text.trim() || busy || developing}
           className="rounded-sm bg-[#26303b] px-4 py-2 text-sm text-[#fdfdf8] shadow-[2px_2px_0_#c03a6f] transition-transform hover:-translate-y-0.5 disabled:opacity-50"
         >
           {busy ? 'Passing…' : `Pass it to ${first}`}

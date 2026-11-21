@@ -99,23 +99,54 @@ export async function speak(text: string): Promise<string> {
 /** Longest edge for an uploaded photo: enough for a polaroid, small enough to send quickly. */
 const PHOTO_MAX_EDGE = 1600
 
-/**
- * Downscale a photo to JPEG before upload. Formats the browser can't decode
- * (some HEIC) go up as they are.
- */
-export async function shrinkPhoto(file: File): Promise<File> {
-  try {
-    const bitmap = await createImageBitmap(file)
-    const scale = Math.min(1, PHOTO_MAX_EDGE / Math.max(bitmap.width, bitmap.height))
-    const canvas = document.createElement('canvas')
-    canvas.width = Math.round(bitmap.width * scale)
-    canvas.height = Math.round(bitmap.height * scale)
-    canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85))
-    return blob ? new File([blob], 'photo.jpg', { type: 'image/jpeg' }) : file
-  } catch {
-    return file
+/** The photo can't be decoded here, so it must not be uploaded: no one could see it. */
+export class UnsupportedPhotoError extends Error {
+  constructor() {
+    super("This photo's format can't be shown. Try a JPG or PNG.")
   }
+}
+
+const HEIF_BRANDS = new Set(['heic', 'heix', 'hevc', 'hevx', 'heim', 'heis', 'mif1', 'msf1'])
+
+/** iPhone photos are often HEIC even when named .JPG — check the bytes, not the name. */
+async function isHeif(file: Blob): Promise<boolean> {
+  const head = new Uint8Array(await file.slice(0, 12).arrayBuffer())
+  const text = String.fromCharCode(...head)
+  return text.slice(4, 8) === 'ftyp' && HEIF_BRANDS.has(text.slice(8, 12))
+}
+
+/**
+ * Turn whatever the person picked into a JPEG every browser can show:
+ * HEIC is converted first (the converter loads only when needed), then the
+ * image is downscaled. Anything we still can't decode is refused rather than
+ * uploaded as a photo nobody could see.
+ */
+export async function preparePhoto(file: File): Promise<File> {
+  let source: Blob = file
+  if (await isHeif(file)) {
+    try {
+      const { default: heic2any } = await import('heic2any')
+      const out = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 })
+      source = Array.isArray(out) ? out[0] : out
+    } catch {
+      throw new UnsupportedPhotoError()
+    }
+  }
+  let bitmap: ImageBitmap
+  try {
+    bitmap = await createImageBitmap(source)
+  } catch {
+    throw new UnsupportedPhotoError()
+  }
+  const scale = Math.min(1, PHOTO_MAX_EDGE / Math.max(bitmap.width, bitmap.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bitmap.width * scale)
+  canvas.height = Math.round(bitmap.height * scale)
+  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  bitmap.close()
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85))
+  if (!blob) throw new UnsupportedPhotoError()
+  return new File([blob], 'photo.jpg', { type: 'image/jpeg' })
 }
 
 /** A private photo, fetched with the caller's token (an <img> can't send one). */
